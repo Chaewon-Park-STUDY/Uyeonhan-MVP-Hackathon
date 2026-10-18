@@ -475,6 +475,18 @@ alter table venues      enable row level security;
 create policy read_regions on regions     for select using (true);
 create policy read_slots   on event_slots for select using (true);
 create policy read_venues  on venues      for select using (true);
+-- 운영 전용 테이블: 운영자만 접근 (참가자 앱에서는 보이지 않음)
+alter table venue_availability enable row level security;
+alter table match_runs         enable row level security;
+alter table settings           enable row level security;
+alter table exception_cases    enable row level security;
+alter table audit_log          enable row level security;
+create policy admin_venue_avail on venue_availability for all using (is_admin()) with check (is_admin());
+create policy admin_match_runs  on match_runs         for all using (is_admin()) with check (is_admin());
+create policy admin_settings    on settings           for all using (is_admin()) with check (is_admin());
+create policy admin_exceptions  on exception_cases    for all using (is_admin()) with check (is_admin());
+create policy admin_audit       on audit_log          for select using (is_admin());
+
 -- 매칭 엔진(Python)은 service_role 키로 접속 → RLS 우회
 
 -- ---------------------------------------------------------------------
