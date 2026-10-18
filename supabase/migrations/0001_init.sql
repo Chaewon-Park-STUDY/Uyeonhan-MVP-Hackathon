@@ -23,7 +23,7 @@ create type attendance_status  as enum ('SCHEDULED', 'ATTENDED', 'CANCELED_EARLY
 create type fail_preference    as enum ('MOVE_DATE', 'MOVE_REGION', 'KEEP_PASS', 'REFUND');  -- 매칭 실패 시 사전 선택 (멤버십은 REFUND 대신 기간 연장)
 create type table_status       as enum ('DRAFT', 'CONFIRMED', 'DISSOLVED', 'CANCELED');
 create type pass_type          as enum ('SINGLE', 'MEMBERSHIP_1M', 'MEMBERSHIP_3M', 'MEMBERSHIP_6M');
-create type coupon_kind        as enum ('REVISIT', 'REFERRAL_NEW', 'REFERRAL_INVITER');
+create type coupon_kind        as enum ('REVISIT', 'REFERRAL_NEW', 'REFERRAL_INVITER', 'LAST_MINUTE', 'NO_SHOW_COMPENSATION');
 create type person_pref_kind   as enum ('LIKE', 'AVOID');
 create type exception_kind     as enum ('PAYMENT', 'DATA', 'VENUE', 'CONFLICT', 'NOTIFY', 'REFUND', 'SAFETY');
 create type case_status        as enum ('OPEN', 'RESOLVED');
@@ -32,7 +32,8 @@ create type case_status        as enum ('OPEN', 'RESOLVED');
 -- 사용자 / 프로필
 -- ---------------------------------------------------------------------
 create table profiles (
-  id               uuid primary key references auth.users(id) on delete cascade,
+  id               uuid primary key default gen_random_uuid(),
+  auth_user_id     uuid unique references auth.users(id) on delete set null,  -- 로그인 계정 (기존 신청자 이관 시 null 가능)
   role             user_role not null default 'participant',
   name             text not null,
   phone            text,
@@ -94,6 +95,16 @@ create table venue_availability (               -- 회차별 수용 가능 테�
   tables_total  int not null default 1,
   tables_used   int not null default 0 check (tables_used <= tables_total),
   primary key (venue_id, slot_id)
+);
+
+create table region_waitlist (              -- 서울 외 지역 대기 명단 (확장 수요)
+  id            uuid primary key default gen_random_uuid(),
+  profile_id    uuid not null references profiles(id) on delete cascade,
+  area_text     text not null,                 -- 희망 지역 원문 (예: '분당', '수원 인계동')
+  accept_seoul  boolean not null default false,  -- "서울 회차도 괜찮아요"
+  notified_at   timestamptz,                   -- 지역 개설 알림 발송 시각
+  created_at    timestamptz not null default now(),
+  unique (profile_id, area_text)
 );
 
 -- ---------------------------------------------------------------------
@@ -403,9 +414,14 @@ for each row execute function log_application_status();
 -- ---------------------------------------------------------------------
 -- RLS: 본인 데이터만, 운영자는 전체
 -- ---------------------------------------------------------------------
+create or replace function current_profile_id() returns uuid
+language sql stable security definer set search_path = public as $$
+  select id from profiles where auth_user_id = auth.uid();
+$$;
+
 create or replace function is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from profiles where id = auth.uid() and role = 'admin');
+  select exists (select 1 from profiles where id = current_profile_id() and role = 'admin');
 $$;
 
 alter table profiles           enable row level security;
@@ -420,35 +436,37 @@ alter table safety_reports     enable row level security;
 alter table blocks             enable row level security;
 alter table match_resolutions  enable row level security;
 alter table notifications      enable row level security;
+alter table region_waitlist    enable row level security;
 alter table chat_rooms         enable row level security;
 alter table chat_messages      enable row level security;
 alter table table_members      enable row level security;
 alter table dining_tables      enable row level security;
 
-create policy own_profile      on profiles           for all using (id = auth.uid() or is_admin()) with check (id = auth.uid() or is_admin());
-create policy own_app          on applications       for all using (user_id = auth.uid() or is_admin()) with check (user_id = auth.uid() or is_admin());
-create policy own_app_slots    on application_slots  for all using (exists (select 1 from applications a where a.id = application_id and (a.user_id = auth.uid() or is_admin())));
-create policy own_payments     on payments           for select using (exists (select 1 from applications a where a.id = application_id and (a.user_id = auth.uid() or is_admin())));
-create policy own_coupons      on coupons            for select using (user_id = auth.uid() or is_admin());
-create policy own_passes       on passes             for select using (user_id = auth.uid() or is_admin());
-create policy own_feedback     on feedback           for all using (user_id = auth.uid() or is_admin()) with check (user_id = auth.uid());
-create policy own_prefs        on person_preferences for all using (from_user = auth.uid() or is_admin()) with check (from_user = auth.uid());   -- 상대에게 비공개
-create policy own_reports      on safety_reports     for all using (reporter_id = auth.uid() or is_admin()) with check (reporter_id = auth.uid());
-create policy own_blocks       on blocks             for all using (blocker_id = auth.uid() or is_admin()) with check (blocker_id = auth.uid());
-create policy own_resolution   on match_resolutions  for all using (exists (select 1 from applications a where a.id = application_id and (a.user_id = auth.uid() or is_admin())));
-create policy own_noti         on notifications      for select using (user_id = auth.uid() or is_admin());
+create policy own_profile      on profiles           for all using (id = current_profile_id() or is_admin()) with check (id = current_profile_id() or is_admin());
+create policy own_app          on applications       for all using (user_id = current_profile_id() or is_admin()) with check (user_id = current_profile_id() or is_admin());
+create policy own_app_slots    on application_slots  for all using (exists (select 1 from applications a where a.id = application_id and (a.user_id = current_profile_id() or is_admin())));
+create policy own_payments     on payments           for select using (exists (select 1 from applications a where a.id = application_id and (a.user_id = current_profile_id() or is_admin())));
+create policy own_coupons      on coupons            for select using (user_id = current_profile_id() or is_admin());
+create policy own_passes       on passes             for select using (user_id = current_profile_id() or is_admin());
+create policy own_feedback     on feedback           for all using (user_id = current_profile_id() or is_admin()) with check (user_id = current_profile_id());
+create policy own_prefs        on person_preferences for all using (from_user = current_profile_id() or is_admin()) with check (from_user = current_profile_id());   -- 상대에게 비공개
+create policy own_reports      on safety_reports     for all using (reporter_id = current_profile_id() or is_admin()) with check (reporter_id = current_profile_id());
+create policy own_blocks       on blocks             for all using (blocker_id = current_profile_id() or is_admin()) with check (blocker_id = current_profile_id());
+create policy own_resolution   on match_resolutions  for all using (exists (select 1 from applications a where a.id = application_id and (a.user_id = current_profile_id() or is_admin())));
+create policy own_noti         on notifications      for select using (user_id = current_profile_id() or is_admin());
+create policy own_waitlist   on region_waitlist    for all using (profile_id = current_profile_id() or is_admin()) with check (profile_id = current_profile_id() or is_admin());
 
 -- 같은 테이블 멤버만 테이블·멤버·단체방 열람 (확정 후)
 create or replace function is_table_member(t uuid) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from table_members where table_id = t and user_id = auth.uid());
+  select exists (select 1 from table_members where table_id = t and user_id = current_profile_id());
 $$;
 
 create policy member_tables   on dining_tables  for select using (is_admin() or (status = 'CONFIRMED' and is_table_member(id)));
 create policy member_members  on table_members  for select using (is_admin() or is_table_member(table_id));
 create policy member_rooms    on chat_rooms     for select using (is_admin() or is_table_member(table_id));
 create policy member_msgs_r   on chat_messages  for select using (is_admin() or exists (select 1 from chat_rooms r where r.id = room_id and is_table_member(r.table_id)));
-create policy member_msgs_w   on chat_messages  for insert with check (sender_id = auth.uid() and exists (select 1 from chat_rooms r where r.id = room_id and is_table_member(r.table_id)));
+create policy member_msgs_w   on chat_messages  for insert with check (sender_id = current_profile_id() and exists (select 1 from chat_rooms r where r.id = room_id and is_table_member(r.table_id)));
 
 -- 공개 읽기: 지역·회차·식당 (참가자 회차 목록용)
 alter table regions     enable row level security;
@@ -483,7 +501,9 @@ insert into settings(key, value) values
    "no_show_rate": 0.0,
    "same_day_cancel": "ALLOWED_NO_REFUND"
  }'),
-('no_show_sanction', '{"no_show_point": 1.0, "late_cancel_point": 0.5, "threshold": 2.0, "restrict_days": 30, "window_days": 90}'),
+('region_expansion', '{"open_threshold": 8}'),
+('last_minute', '{"discount": {"D-1": 0.30, "D-0": 0.50}, "offer_ttl_hours": 3, "max_offers_per_seat": 5}'),
+('no_show_sanction', '{"no_show_point": 1.0, "late_cancel_point": 0.5, "threshold": 2.0, "restrict_days": 30, "window_days": 90, "compensation": {"enabled": true, "pool_rate": 0.5, "coupon_valid_days": 30}}'),
 ('coupons', '{
    "revisit":  {"rate": 0.10, "valid_days": 14, "trigger": "FEEDBACK_SUBMITTED"},
    "referral": {"new_user_rate": 0.10, "inviter_rate": 0.10, "valid_days": 30, "inviter_trigger": "FRIEND_ATTENDED"},
