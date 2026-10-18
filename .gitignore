@@ -147,3 +147,14 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# --- Private (hackathon materials / data) ---
+private/
+*.pdf
+*.csv
+*.xlsx
+*.xls
+data/
+.env
+.env.*
+!.env.example
