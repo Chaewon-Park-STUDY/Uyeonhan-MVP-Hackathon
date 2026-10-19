@@ -97,7 +97,25 @@ export const ageBand = (birthYear: number) => {
   return `${decade}대 ${part}`;
 };
 
-export const won =(n: number) => `${n.toLocaleString("ko-KR")}원`;
+// 알림 문구 (notifications.template → 제목·본문)
+export function notiText(template: string, p: { starts_at?: string; venue?: string | null; region?: string }) {
+  const when = p.starts_at ? fmtDate(p.starts_at) : "";
+  const where = p.venue ?? (p.region ? REGION_LABEL[p.region] : "");
+  switch (template) {
+    case "MATCH_CONFIRMED":
+      return { title: "매칭이 확정됐어요 🎉", body: `${when} ${where}. 단체방에서 먼저 인사해 보세요.` };
+    case "REMINDER_D1":
+      return { title: "내일 저녁 우연한 식탁", body: `${when} ${where}. 못 오게 되면 오늘 중에 알려 주세요.` };
+    case "REMINDER_D0":
+      return { title: "오늘 저녁 모임 3시간 전", body: `${where}에서 만나요. 위치를 한 번 더 확인해 주세요.` };
+    case "FEEDBACK_REQUEST":
+      return { title: "오늘 식사는 어떠셨나요?", body: "1분 피드백을 남기면 다음 매칭이 더 잘 맞아져요." };
+    default:
+      return { title: "알림", body: "" };
+  }
+}
+
+export const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
 // DB 함수가 던지는 오류 코드 → 안내 문구
 export const ERROR_TEXT: Record<string, string> = {

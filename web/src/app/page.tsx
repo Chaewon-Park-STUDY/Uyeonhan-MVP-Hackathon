@@ -14,7 +14,8 @@ type AppRow = {
   match_resolutions: { choice: string | null; chosen_slot_id: string | null } | null;
   payments: { amount: number; status: string; refund_amount: number | null; method: string }[];
   passes: { type: string } | null;
-  table_members: { table_id: string; dining_tables: { explanation: { shared_interests?: string[] } | null } | null } | null;
+  pass_id: string | null;
+  table_members: { table_id: string; dining_tables: { explanation: { shared_interests?: string[] } | null; venues: { name: string } | null } | null } | null;
 };
 type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[]; is_me: boolean };
 
@@ -43,11 +44,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
   const { data } = await supabase
     .from("applications")
-    .select(`id, payment_status, match_status, assigned_slot_id, created_at,
+    .select(`id, payment_status, match_status, assigned_slot_id, created_at, pass_id,
              application_slots(event_slots(id, starts_at, region_code, apply_deadline)),
              match_resolutions(choice, chosen_slot_id),
              payments(amount, status, refund_amount, method), passes(type),
-             table_members(table_id, dining_tables(explanation))`)
+             table_members(table_id, dining_tables(explanation, venues(name)))`)
     .eq("application_status", "SUBMITTED")
     .order("created_at", { ascending: false });
   const apps = (data ?? []) as unknown as AppRow[];
@@ -78,7 +79,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         </Card>
       ) : (
         <div className="space-y-4">
-          {apps.map((a) => <AppCard key={a.id} a={a} intro={intros[a.id]} />)}
+          {apps.map((a) => (
+            <AppCard key={a.id} a={a} intro={intros[a.id]}
+                     passReused={apps.some((b) => b.id !== a.id && b.pass_id === a.pass_id && b.created_at > a.created_at)} />
+          ))}
           <ButtonLink href="/apply" tone="ghost">다른 회차 신청하기</ButtonLink>
         </div>
       )}
@@ -86,7 +90,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   );
 }
 
-function AppCard({ a, intro }: { a: AppRow; intro?: Intro[] }) {
+function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReused: boolean }) {
   const slots = a.application_slots.map((s) => s.event_slots).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
   const assigned = slots.find((s) => s.id === a.assigned_slot_id);
   const m = MATCH_LABEL[a.match_status] ?? { label: a.match_status, tone: "muted" as const };
@@ -125,7 +129,10 @@ function AppCard({ a, intro }: { a: AppRow; intro?: Intro[] }) {
               ))}
             </ul>
           )}
-          <p className="text-xs text-[#9A7B66]">식당과 단체방 안내는 곧 도착해요.</p>
+          {a.table_members?.dining_tables?.venues?.name && (
+            <p className="text-sm">📍 {a.table_members.dining_tables.venues.name}</p>
+          )}
+          <ButtonLink href={`/table/${a.table_members?.table_id}`}>단체방 · 식당 안내 보기</ButtonLink>
         </div>
       ) : (
         <div className="space-y-1 text-sm">
@@ -154,7 +161,8 @@ function AppCard({ a, intro }: { a: AppRow; intro?: Intro[] }) {
       {a.match_status === "NO_MATCH" && a.match_resolutions?.choice === "KEEP_PASS" && (
         <p className="mt-3 rounded-xl bg-[#F3E6D6] px-3 py-2 text-xs">
           이번엔 매칭되지 않아 <b>이용권을 보관했어요.</b>{" "}
-          {a.passes?.type === "SINGLE" ? "다음에 신청하면 결제 없이 바로 사용돼요." : "멤버십 기간이 7일 연장됐어요."}
+          {a.passes?.type !== "SINGLE" ? "멤버십 기간이 7일 연장됐어요."
+            : passReused ? "보관한 이용권은 다음 신청에 사용했어요." : "다음에 신청하면 결제 없이 바로 사용돼요."}
         </p>
       )}
       {a.payment_status === "REFUNDED" && payment?.refund_amount != null && (
