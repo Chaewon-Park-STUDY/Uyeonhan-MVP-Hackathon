@@ -1,72 +1,205 @@
-import { Suspense } from "react";
-import { connection } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
+import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, fmtDate, won } from "@/lib/labels";
+import { getMe } from "@/lib/supabase/server";
 
-type Slot = {
+type SlotRow = { id: string; starts_at: string; region_code: string; apply_deadline: string };
+type AppRow = {
   id: string;
-  starts_at: string;
-  region_code: string;
-  regions: { name: string } | { name: string }[] | null;
+  payment_status: string;
+  match_status: string;
+  assigned_slot_id: string | null;
+  created_at: string;
+  application_slots: { event_slots: SlotRow }[];
+  match_resolutions: { choice: string | null; chosen_slot_id: string | null } | null;
+  payments: { amount: number; status: string; refund_amount: number | null }[];
+  table_members: { table_id: string; dining_tables: { explanation: { shared_interests?: string[] } | null } | null } | null;
+};
+type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[] };
+
+const RESOLVED_TEXT: Record<string, string> = {
+  TRANSFERRED: "다른 회차로 옮겼어요. 새 회차 매칭을 기다려 주세요.",
+  PASS_KEPT: "이용권을 보관했어요. 다음 신청 때 쓸 수 있어요.",
+  MEMBERSHIP_EXTENDED: "멤버십 기간을 7일 연장했어요.",
+  REFUNDED: "전액 환불을 완료했어요.",
 };
 
-const fmt = (iso: string) =>
-  new Date(iso).toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
+  const { supabase, user, profile } = await getMe();
 
-const regionName = (s: Slot) =>
-  Array.isArray(s.regions) ? s.regions[0]?.name : s.regions?.name ?? s.region_code;
-
-// 요청 시점에 DB를 읽는 부분 (Suspense 안에서 렌더링)
-async function SlotList() {
-  await connection();
-  const { data, error } = await supabase
-    .from("event_slots")
-    .select("id, starts_at, region_code, regions(name)")
-    .order("starts_at")
-    .order("region_code");
-
-  if (error) {
+  if (!user) return <Landing slots={await openSlots(supabase)} />;
+  if (!profile) {
     return (
-      <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">DB 연결 오류: {error.message}</p>
+      <Page title="반가워요!">
+        <Card>
+          <p className="mb-4 text-sm text-[#7A5E4B]">잘 맞는 테이블을 만들기 위해 간단한 프로필이 필요해요. 3분이면 끝나요.</p>
+          <ButtonLink href="/onboarding">프로필 작성하기</ButtonLink>
+        </Card>
+      </Page>
     );
   }
 
-  const slots = (data ?? []) as Slot[];
-  if (slots.length === 0) {
-    return <p className="text-sm text-[#7A5E4B]">모집 중인 회차가 없어요.</p>;
+  const { data } = await supabase
+    .from("applications")
+    .select(`id, payment_status, match_status, assigned_slot_id, created_at,
+             application_slots(event_slots(id, starts_at, region_code, apply_deadline)),
+             match_resolutions(choice, chosen_slot_id),
+             payments(amount, status, refund_amount),
+             table_members(table_id, dining_tables(explanation))`)
+    .eq("application_status", "SUBMITTED")
+    .order("created_at", { ascending: false });
+  const apps = (data ?? []) as unknown as AppRow[];
+
+  const intros: Record<string, Intro[]> = {};
+  for (const a of apps) {
+    const tid = a.table_members?.table_id;
+    if (a.match_status === "CONFIRMED" && tid) {
+      const { data: rows } = await supabase.rpc("table_intro", { p_table_id: tid });
+      intros[a.id] = (rows ?? []) as Intro[];
+    }
   }
 
   return (
-    <ul className="space-y-2">
-      {slots.map((s) => (
-        <li key={s.id} className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
-          <span>{fmt(s.starts_at)}</span>
-          <span className="rounded-full bg-[#F3E6D6] px-3 py-1 text-sm">{regionName(s)}</span>
-        </li>
-      ))}
-    </ul>
+    <Page>
+      <p className="text-sm text-[#9A7B66]">{profile.name}님,</p>
+      <h1 className="mb-5 text-2xl font-bold">나의 우연한 식탁</h1>
+
+      {sp.done && <Flash>신청이 접수됐어요. 매칭 결과는 발표 시각에 자동으로 알려 드려요.</Flash>}
+      {sp.resolved && <Flash>{RESOLVED_TEXT[sp.resolved] ?? "처리됐어요."}</Flash>}
+
+      {apps.length === 0 ? (
+        <Card>
+          <p className="mb-4 text-sm text-[#7A5E4B]">아직 신청한 식탁이 없어요.</p>
+          <ButtonLink href="/apply">참가 신청하기</ButtonLink>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {apps.map((a) => <AppCard key={a.id} a={a} intro={intros[a.id]} />)}
+          <ButtonLink href="/apply" tone="ghost">다른 회차 신청하기</ButtonLink>
+        </div>
+      )}
+    </Page>
   );
 }
 
-export default function Home() {
-  return (
-    <main className="min-h-screen bg-[#FBF6EE] text-[#4A3426] px-4 py-10">
-      <div className="mx-auto max-w-md">
-        <p className="text-sm tracking-widest text-[#B9784A]">매주 목요일 저녁</p>
-        <h1 className="mt-1 text-3xl font-bold">우연한 식탁</h1>
-        <p className="mt-2 text-[#7A5E4B]">처음 보는 사람들과 좋은 저녁 한 끼</p>
+function AppCard({ a, intro }: { a: AppRow; intro?: Intro[] }) {
+  const slots = a.application_slots.map((s) => s.event_slots).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
+  const assigned = slots.find((s) => s.id === a.assigned_slot_id);
+  const m = MATCH_LABEL[a.match_status] ?? { label: a.match_status, tone: "muted" as const };
+  const step: 0 | 1 | 2 | 3 =
+    a.match_status === "CONFIRMED" ? 3 : a.payment_status === "PAID" ? 2 : a.payment_status === "PENDING" ? 1 : 0;
+  const announce = slots.length ? slots.reduce((min, s) => (s.apply_deadline < min ? s.apply_deadline : min), slots[0].apply_deadline) : null;
+  const payment = a.payments[0];
+  const shared = a.table_members?.dining_tables?.explanation?.shared_interests ?? [];
 
-        <h2 className="mt-10 mb-3 font-semibold">모집 중인 회차</h2>
-        <Suspense fallback={<p className="text-sm text-[#7A5E4B]">불러오는 중…</p>}>
-          <SlotList />
-        </Suspense>
+  return (
+    <Card>
+      <div className="flex items-center justify-between">
+        <Badge tone={m.tone}>{m.label}</Badge>
+        <span className="text-xs text-[#9A7B66]">{PAYMENT_LABEL[a.payment_status] ?? a.payment_status}</span>
       </div>
-    </main>
+      {["NO_MATCH", "EXCEPTION"].includes(a.match_status) ? null : <Steps current={step} />}
+
+      {a.match_status === "CONFIRMED" && assigned ? (
+        <div className="space-y-3">
+          <p className="text-lg font-bold">{fmtDate(assigned.starts_at)}</p>
+          <p className="text-sm">{REGION_LABEL[assigned.region_code]} · {intro?.length ?? 0}명이 함께해요</p>
+          {shared.length > 0 && (
+            <p className="rounded-xl bg-[#FFF8F0] px-3 py-2 text-sm">
+              함께 나눌 이야기: <b>{shared.join(", ")}</b>
+            </p>
+          )}
+          {intro && intro.length > 0 && (
+            <ul className="grid grid-cols-2 gap-2 text-xs">
+              {intro.map((p, i) => (
+                <li key={i} className="rounded-xl border border-[#EFE4D6] px-3 py-2">
+                  <b>{p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
+                  <p className="mt-0.5 truncate text-[#9A7B66]">{p.interests.slice(0, 2).join(", ")}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-[#9A7B66]">식당과 단체방 안내는 곧 도착해요.</p>
+        </div>
+      ) : (
+        <div className="space-y-1 text-sm">
+          <p className="text-[#9A7B66]">신청한 회차</p>
+          {slots.map((s) => (
+            <p key={s.id}>· {fmtDate(s.starts_at)} {REGION_LABEL[s.region_code]}</p>
+          ))}
+        </div>
+      )}
+
+      {a.match_status === "WAITING" && a.payment_status === "PAID" && announce && (
+        <p className="mt-3 rounded-xl bg-[#F3E6D6] px-3 py-2 text-xs">
+          {fmtDate(announce)}에 자동으로 매칭돼요. 조건에 맞는 4~6명을 찾고 있어요.
+        </p>
+      )}
+      {a.match_resolutions?.choice === "MOVE_DATE" || a.match_resolutions?.choice === "MOVE_REGION" ? (
+        <p className="mt-3 text-xs text-[#9A7B66]">지난 회차에서 매칭되지 않아 원하신 대로 이 회차로 옮겼어요.</p>
+      ) : null}
+
+      {a.payment_status === "PENDING" && (
+        <div className="mt-4"><ButtonLink href={`/pay/${a.id}`}>결제하고 매칭 대기하기</ButtonLink></div>
+      )}
+      {a.match_status === "ALTERNATIVE_OFFERED" && (
+        <div className="mt-4"><ButtonLink href={`/resolve/${a.id}`}>다른 일정 고르기</ButtonLink></div>
+      )}
+      {a.payment_status === "REFUNDED" && payment?.refund_amount != null && (
+        <p className="mt-3 text-xs text-[#9A7B66]">{won(payment.refund_amount)} 환불 완료</p>
+      )}
+    </Card>
+  );
+}
+
+function Flash({ children }: { children: React.ReactNode }) {
+  return <p className="mb-4 rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">{children}</p>;
+}
+
+async function openSlots(supabase: Awaited<ReturnType<typeof getMe>>["supabase"]) {
+  const { data } = await supabase
+    .from("event_slots")
+    .select("id, starts_at, region_code, apply_deadline")
+    .eq("is_open", true)
+    .gt("apply_deadline", new Date().toISOString())
+    .order("starts_at")
+    .order("region_code");
+  return (data ?? []) as SlotRow[];
+}
+
+function Landing({ slots }: { slots: SlotRow[] }) {
+  const dates = [...new Set(slots.map((s) => s.starts_at))];
+  return (
+    <Page>
+      <section className="mb-8 mt-6">
+        <p className="text-sm tracking-widest text-[#B9784A]">매주 목요일 저녁</p>
+        <h1 className="mt-1 text-4xl font-bold leading-tight">우연한 식탁</h1>
+        <p className="mt-3 text-[#7A5E4B]">
+          처음 보는 사람들과 좋은 저녁 한 끼.<br />성향이 맞는 4~6명을 한 식탁으로 연결해 드려요.
+        </p>
+      </section>
+      <ButtonLink href="/login?mode=signup">신청하러 가기</ButtonLink>
+
+      <h2 className="mb-3 mt-10 font-semibold">모집 중인 회차</h2>
+      <div className="space-y-2">
+        {dates.length === 0 && <p className="text-sm text-[#9A7B66]">지금 모집 중인 회차가 없어요.</p>}
+        {dates.map((d) => (
+          <Card key={d} className="py-4">
+            <p className="font-semibold">{fmtDate(d)}</p>
+            <p className="mt-1 text-sm text-[#7A5E4B]">
+              {slots.filter((s) => s.starts_at === d).map((s) => REGION_LABEL[s.region_code]).join(" · ")}
+            </p>
+          </Card>
+        ))}
+      </div>
+
+      <h2 className="mb-3 mt-10 font-semibold">이렇게 진행돼요</h2>
+      <ol className="space-y-2 text-sm text-[#7A5E4B]">
+        <li>1. 프로필과 가능한 날짜·지역을 골라 신청해요.</li>
+        <li>2. 화요일 밤, 나이·성비·MBTI·관심사를 고려해 4~6명 테이블이 자동으로 만들어져요.</li>
+        <li>3. 식당과 단체방이 열리고, 목요일 저녁에 만나요.</li>
+        <li>4. 식사 후 남긴 피드백이 다음 매칭을 더 정교하게 만들어요.</li>
+      </ol>
+    </Page>
   );
 }
