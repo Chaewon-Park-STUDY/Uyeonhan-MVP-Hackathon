@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PendingButton } from "./pending";
 
 export function Page({ title, back, children }: { title?: string; back?: string; children: ReactNode }) {
   return (
@@ -53,7 +54,7 @@ export function Submit({ children, tone = "primary" }: { children: ReactNode; to
     tone === "primary"
       ? "bg-[#B9784A] text-white hover:bg-[#A4673C]"
       : "border border-[#E8DCCD] bg-white text-[#4A3426] hover:bg-[#FFFDF9]";
-  return <button type="submit" className={`w-full rounded-xl px-4 py-3.5 font-semibold ${cls}`}>{children}</button>;
+  return <PendingButton className={`w-full rounded-xl px-4 py-3.5 font-semibold ${cls}`}>{children}</PendingButton>;
 }
 
 export function ButtonLink({ href, children, tone = "primary" }: { href: string; children: ReactNode; tone?: "primary" | "ghost" }) {

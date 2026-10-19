@@ -1,5 +1,6 @@
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
-import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, fmtDate, won } from "@/lib/labels";
+import { ProfileSummary } from "@/components/profile-summary";
+import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 
 type SlotRow = { id: string; starts_at: string; region_code: string; apply_deadline: string };
@@ -11,10 +12,11 @@ type AppRow = {
   created_at: string;
   application_slots: { event_slots: SlotRow }[];
   match_resolutions: { choice: string | null; chosen_slot_id: string | null } | null;
-  payments: { amount: number; status: string; refund_amount: number | null }[];
+  payments: { amount: number; status: string; refund_amount: number | null; method: string }[];
+  passes: { type: string } | null;
   table_members: { table_id: string; dining_tables: { explanation: { shared_interests?: string[] } | null } | null } | null;
 };
-type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[] };
+type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[]; is_me: boolean };
 
 const RESOLVED_TEXT: Record<string, string> = {
   TRANSFERRED: "다른 회차로 옮겼어요. 새 회차 매칭을 기다려 주세요.",
@@ -44,7 +46,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     .select(`id, payment_status, match_status, assigned_slot_id, created_at,
              application_slots(event_slots(id, starts_at, region_code, apply_deadline)),
              match_resolutions(choice, chosen_slot_id),
-             payments(amount, status, refund_amount),
+             payments(amount, status, refund_amount, method), passes(type),
              table_members(table_id, dining_tables(explanation))`)
     .eq("application_status", "SUBMITTED")
     .order("created_at", { ascending: false });
@@ -63,6 +65,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <Page>
       <p className="text-sm text-[#9A7B66]">{profile.name}님,</p>
       <h1 className="mb-5 text-2xl font-bold">나의 우연한 식탁</h1>
+
+      <div className="mb-4"><ProfileSummary p={profile} editHref="/profile" /></div>
 
       {sp.done && <Flash>신청이 접수됐어요. 매칭 결과는 발표 시각에 자동으로 알려 드려요.</Flash>}
       {sp.resolved && <Flash>{RESOLVED_TEXT[sp.resolved] ?? "처리됐어요."}</Flash>}
@@ -96,14 +100,16 @@ function AppCard({ a, intro }: { a: AppRow; intro?: Intro[] }) {
     <Card>
       <div className="flex items-center justify-between">
         <Badge tone={m.tone}>{m.label}</Badge>
-        <span className="text-xs text-[#9A7B66]">{PAYMENT_LABEL[a.payment_status] ?? a.payment_status}</span>
+        <span className="text-xs text-[#9A7B66]">{payment?.method === "KEPT_PASS" && a.payment_status === "PAID" ? "보관 이용권 사용"
+            : payment?.method === "MEMBERSHIP" && a.payment_status === "PAID" ? "멤버십"
+            : PAYMENT_LABEL[a.payment_status] ?? a.payment_status}</span>
       </div>
       {["NO_MATCH", "EXCEPTION"].includes(a.match_status) ? null : <Steps current={step} />}
 
       {a.match_status === "CONFIRMED" && assigned ? (
         <div className="space-y-3">
           <p className="text-lg font-bold">{fmtDate(assigned.starts_at)}</p>
-          <p className="text-sm">{REGION_LABEL[assigned.region_code]} · {intro?.length ?? 0}명이 함께해요</p>
+          <p className="text-sm">{REGION_LABEL[assigned.region_code]} · 나 포함 {intro?.length ?? 0}명이 함께해요</p>
           {shared.length > 0 && (
             <p className="rounded-xl bg-[#FFF8F0] px-3 py-2 text-sm">
               함께 나눌 이야기: <b>{shared.join(", ")}</b>
@@ -112,8 +118,8 @@ function AppCard({ a, intro }: { a: AppRow; intro?: Intro[] }) {
           {intro && intro.length > 0 && (
             <ul className="grid grid-cols-2 gap-2 text-xs">
               {intro.map((p, i) => (
-                <li key={i} className="rounded-xl border border-[#EFE4D6] px-3 py-2">
-                  <b>{p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
+                <li key={i} className={`rounded-xl border px-3 py-2 ${p.is_me ? "border-[#B9784A] bg-[#FFF8F0]" : "border-[#EFE4D6]"}`}>
+                  <b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
                   <p className="mt-0.5 truncate text-[#9A7B66]">{p.interests.slice(0, 2).join(", ")}</p>
                 </li>
               ))}
@@ -132,7 +138,7 @@ function AppCard({ a, intro }: { a: AppRow; intro?: Intro[] }) {
 
       {a.match_status === "WAITING" && a.payment_status === "PAID" && announce && (
         <p className="mt-3 rounded-xl bg-[#F3E6D6] px-3 py-2 text-xs">
-          {fmtDate(announce)}에 자동으로 매칭돼요. 조건에 맞는 4~6명을 찾고 있어요.
+          {fmtDeadline(announce)}에 자동으로 매칭돼요. 조건에 맞는 4~6명을 찾고 있어요.
         </p>
       )}
       {a.match_resolutions?.choice === "MOVE_DATE" || a.match_resolutions?.choice === "MOVE_REGION" ? (
@@ -144,6 +150,12 @@ function AppCard({ a, intro }: { a: AppRow; intro?: Intro[] }) {
       )}
       {a.match_status === "ALTERNATIVE_OFFERED" && (
         <div className="mt-4"><ButtonLink href={`/resolve/${a.id}`}>다른 일정 고르기</ButtonLink></div>
+      )}
+      {a.match_status === "NO_MATCH" && a.match_resolutions?.choice === "KEEP_PASS" && (
+        <p className="mt-3 rounded-xl bg-[#F3E6D6] px-3 py-2 text-xs">
+          이번엔 매칭되지 않아 <b>이용권을 보관했어요.</b>{" "}
+          {a.passes?.type === "SINGLE" ? "다음에 신청하면 결제 없이 바로 사용돼요." : "멤버십 기간이 7일 연장됐어요."}
+        </p>
       )}
       {a.payment_status === "REFUNDED" && payment?.refund_amount != null && (
         <p className="mt-3 text-xs text-[#9A7B66]">{won(payment.refund_amount)} 환불 완료</p>

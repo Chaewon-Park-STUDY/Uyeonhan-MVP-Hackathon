@@ -70,7 +70,34 @@ export const fmtDate = (iso: string) =>
     minute: "2-digit",
   });
 
-export const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
+// 마감 시각: 00:00(KST)은 "전날 밤 12시"로 표기 — "21일 오전 12:00"은 헷갈림
+export function fmtDeadline(iso: string) {
+  const d = new Date(iso);
+  const kst = new Date(d.getTime() + 9 * 3600 * 1000);
+  if (kst.getUTCHours() === 0 && kst.getUTCMinutes() === 0) {
+    const prev = new Date(d.getTime() - 60 * 1000);
+    const day = prev.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "short" });
+    return `${day} 밤 12시`;
+  }
+  return fmtDate(iso);
+}
+
+// MBTI: 네 축 모두 버튼으로 선택 (필수)
+export const MBTI_AXES = [
+  { name: "mbti_ei", title: "에너지", options: [["E", "외향", "사람을 만나면 충전돼요"], ["I", "내향", "혼자 있어야 충전돼요"]] },
+  { name: "mbti_sn", title: "인식", options: [["S", "감각", "지금의 구체적인 것에 집중해요"], ["N", "직관", "가능성과 의미를 먼저 떠올려요"]] },
+  { name: "mbti_tf", title: "판단", options: [["T", "사고", "논리와 원칙으로 판단해요"], ["F", "감정", "사람과 관계를 먼저 생각해요"]] },
+  { name: "mbti_jp", title: "생활", options: [["J", "계획", "미리 정해 두는 게 편해요"], ["P", "즉흥", "그때그때 맞추는 게 편해요"]] },
+] as const;
+
+export const ageBand = (birthYear: number) => {
+  const age = new Date().getFullYear() - birthYear;
+  const decade = Math.floor(age / 10) * 10;
+  const part = age % 10 <= 3 ? "초반" : age % 10 <= 6 ? "중반" : "후반";
+  return `${decade}대 ${part}`;
+};
+
+export const won =(n: number) => `${n.toLocaleString("ko-KR")}원`;
 
 // DB 함수가 던지는 오류 코드 → 안내 문구
 export const ERROR_TEXT: Record<string, string> = {

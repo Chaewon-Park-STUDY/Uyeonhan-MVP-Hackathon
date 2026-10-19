@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Card, Chips, ErrorBox, Label, Page, Submit, inputCls } from "@/components/ui";
-import { ALLERGIES, BUDGETS, DESIRED, DISLIKES, FAIL_PREFS, INTERESTS, SELF_TRAITS } from "@/lib/labels";
+import { ALLERGIES, BUDGETS, DESIRED, DISLIKES, FAIL_PREFS, INTERESTS, MBTI_AXES, SELF_TRAITS } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 import { saveProfile } from "./actions";
 
@@ -12,12 +12,13 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
   const thisYear = new Date().getFullYear();
 
   return (
-    <Page title={profile ? "내 프로필" : "나를 소개해 주세요"}>
+    <Page title={profile ? "프로필 수정" : "나를 소개해 주세요"} back={profile ? "/profile" : undefined}>
       <p className="-mt-3 mb-5 text-sm text-[#7A5E4B]">
         잘 맞는 테이블을 만드는 데만 쓰여요. 다른 참가자에게는 연락처·출생연도가 공개되지 않아요.
       </p>
       <ErrorBox message={error} />
       <form action={saveProfile} className="space-y-4">
+        <input type="hidden" name="return_to" value={profile ? "/profile?saved=1" : "/apply"} />
         <Card>
           <Label>기본 정보</Label>
           <div className="space-y-3">
@@ -32,19 +33,39 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                 <option value="M">남성</option>
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <input name="job" defaultValue={p.job ?? ""} placeholder="직업 (예: 마케터)" className={inputCls} />
-              <input name="mbti" defaultValue={p.mbti ?? ""} maxLength={4} placeholder="MBTI (선택)" className={`${inputCls} uppercase`} />
-            </div>
+            <input name="job" defaultValue={p.job ?? ""} placeholder="직업 (선택, 예: 마케터)" className={inputCls} />
           </div>
         </Card>
 
         <Card>
-          <Label hint="여러 개 골라도 돼요">요즘 관심사</Label>
+          <Label hint="네 가지 모두 골라 주세요. 테이블 분위기의 균형을 맞추는 데 써요">MBTI</Label>
+          <div className="space-y-3">
+            {MBTI_AXES.map((axis, i) => (
+              <div key={axis.name}>
+                <p className="mb-1.5 text-xs text-[#9A7B66]">{axis.title}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {axis.options.map(([letter, word, desc]) => (
+                    <label key={letter} className="cursor-pointer">
+                      <input type="radio" name={axis.name} value={letter} required
+                             defaultChecked={(p.mbti ?? "")[i] === letter} className="peer sr-only" />
+                      <span className="block h-full rounded-xl border border-[#E8DCCD] bg-[#FFFDF9] px-3 py-2.5 peer-checked:border-[#B9784A] peer-checked:bg-[#B9784A] peer-checked:text-white">
+                        <b>{letter}</b> <span className="text-sm">{word}</span>
+                        <span className="mt-0.5 block text-[11px] opacity-75">{desc}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <Label hint="하나 이상 골라 주세요 (여러 개 가능)">요즘 관심사</Label>
           <Chips name="interests" options={INTERESTS} checked={p.interests ?? []} />
-          <Label>나는 어떤 사람인가요?</Label>
+          <Label hint="선택">나는 어떤 사람인가요?</Label>
           <Chips name="self_traits" options={SELF_TRAITS} checked={p.self_traits ?? []} />
-          <Label>어떤 사람을 만나고 싶나요?</Label>
+          <Label hint="하나 이상 골라 주세요 (여러 개 가능)">어떤 사람을 만나고 싶나요?</Label>
           <Chips name="desired_traits" options={DESIRED} checked={p.desired_traits ?? []} />
         </Card>
 

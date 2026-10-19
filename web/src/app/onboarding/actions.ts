@@ -16,7 +16,7 @@ export async function saveProfile(formData: FormData) {
     birth_year: Number(one("birth_year")),
     gender: one("gender"),
     job: one("job"),
-    mbti: one("mbti"),
+    mbti: ["mbti_ei", "mbti_sn", "mbti_tf", "mbti_jp"].map(one).join(""),
     interests: all("interests"),
     self_traits: all("self_traits"),
     desired_traits: all("desired_traits"),
@@ -30,6 +30,9 @@ export async function saveProfile(formData: FormData) {
   if (!payload.name || !payload.birth_year || !payload.gender) {
     redirect(`/onboarding?error=${encodeURIComponent("이름, 출생연도, 성별은 꼭 입력해 주세요.")}`);
   }
+  if (!/^[EI][SN][TF][JP]$/.test(payload.mbti)) {
+    redirect(`/onboarding?error=${encodeURIComponent("MBTI 네 가지를 모두 골라 주세요.")}`);
+  }
   if (payload.interests.length === 0 || payload.desired_traits.length === 0) {
     redirect(`/onboarding?error=${encodeURIComponent("관심사와 만나고 싶은 사람을 하나 이상 골라 주세요.")}`);
   }
@@ -37,5 +40,5 @@ export async function saveProfile(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("upsert_my_profile", { p: payload });
   if (error) redirect(`/onboarding?error=${encodeURIComponent(errorText(error.message))}`);
-  redirect("/apply");
+  redirect(one("return_to") === "/profile?saved=1" ? "/profile?saved=1" : "/apply");
 }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { PendingButton } from "@/components/pending";
 import { getMe } from "@/lib/supabase/server";
 import { signOut } from "./actions";
 import "./globals.css";
@@ -20,9 +21,9 @@ async function Header() {
         {user ? (
           <nav className="flex items-center gap-4 text-sm">
             <Link href="/apply">신청하기</Link>
-            <Link href="/onboarding">내 프로필</Link>
+            <Link href="/profile">내 프로필</Link>
             <form action={signOut}>
-              <button className="text-[#9A7B66]">로그아웃</button>
+              <PendingButton className="text-[#9A7B66]" pendingText="나가는 중…">로그아웃</PendingButton>
             </form>
           </nav>
         ) : (

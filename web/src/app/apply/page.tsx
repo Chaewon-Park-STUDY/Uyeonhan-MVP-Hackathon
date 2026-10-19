@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Card, ErrorBox, Label, Page, Submit } from "@/components/ui";
-import { FAIL_PREFS, PASSES, REFUND_POLICY, REGION_LABEL, fmtDate, won } from "@/lib/labels";
+import { FAIL_PREFS, PASSES, REFUND_POLICY, REGION_LABEL, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 import { submitApplication } from "./actions";
 
@@ -13,12 +13,13 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
   if (!profile) redirect("/onboarding");
 
   const nowIso = new Date().toISOString();
-  const [{ data: slots }, { data: passes }, { data: coupons }] = await Promise.all([
+  const [{ data: slots }, { data: passes }, { data: coupons }, { data: credit }] = await Promise.all([
     supabase.from("event_slots").select("id, starts_at, region_code, apply_deadline")
       .eq("is_open", true).gt("apply_deadline", nowIso).order("starts_at").order("region_code"),
     supabase.from("passes").select("type, expires_at").neq("type", "SINGLE").gt("expires_at", nowIso)
       .order("expires_at", { ascending: false }).limit(1),
     supabase.from("coupons").select("id, kind, discount_rate, expires_at").is("used_at", null).gt("expires_at", nowIso),
+    supabase.rpc("my_credit"),
   ]);
 
   const byDate = new Map<string, Slot[]>();
@@ -39,7 +40,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
             {[...byDate.entries()].map(([date, list]) => (
               <div key={date}>
                 <p className="mb-1 text-sm font-semibold">{fmtDate(list[0].starts_at)}</p>
-                <p className="mb-2 text-xs text-[#9A7B66]">신청 마감·매칭 발표 {fmtDate(list[0].apply_deadline)}</p>
+                <p className="mb-2 text-xs text-[#9A7B66]">신청 마감·매칭 {fmtDeadline(list[0].apply_deadline)}</p>
                 <div className="flex flex-wrap gap-2">
                   {list.map((s) => (
                     <label key={s.id} className="cursor-pointer">
@@ -57,7 +58,12 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
 
         <Card>
           <Label>이용권</Label>
-          {membership ? (
+          {!membership && credit === "KEPT_PASS" ? (
+            <p className="rounded-xl bg-[#F3E6D6] px-4 py-3 text-sm">
+              지난번에 <b>보관한 1회권</b>이 있어요. 추가 결제 없이 신청돼요.
+              <input type="hidden" name="pass" value="SINGLE" />
+            </p>
+          ) : membership ? (
             <p className="rounded-xl bg-[#F3E6D6] px-4 py-3 text-sm">
               멤버십 이용 중이에요 ({fmtDate(membership.expires_at).split(" ").slice(0, 2).join(" ")}까지). 추가 결제 없이 신청돼요.
               <input type="hidden" name="pass" value={membership.type} />
@@ -77,7 +83,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
               ))}
             </div>
           )}
-          {!membership && (coupons?.length ?? 0) > 0 && (
+          {!membership && credit !== "KEPT_PASS" && (coupons?.length ?? 0) > 0 && (
             <>
               <Label>쿠폰</Label>
               <select name="coupon" className="w-full rounded-xl border border-[#E8DCCD] bg-[#FFFDF9] px-4 py-3">
