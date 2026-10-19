@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/match.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{.next,node_modules,public,src}/**"
+    }
+  }
+}
