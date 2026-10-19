@@ -150,6 +150,13 @@ def load_rows() -> tuple[dict, dict, dict | None]:
 
 
 def run(date: str | None, dry_run: bool) -> dict:
+    learned = None
+    if not dry_run:
+        try:                              # 매칭 직전 최신 피드백으로 사후분포 갱신 (실패해도 매칭은 진행)
+            from learn import learn
+            learned = learn().get("status")
+        except Exception as e:  # noqa: BLE001
+            learned = f"skip: {e}"
     rows, settings, model = load_rows()
     date = date or due_date(rows, datetime.now(timezone.utc))
     if not date:
@@ -158,7 +165,7 @@ def run(date: str | None, dry_run: bool) -> dict:
     if dry_run:
         return {"status": "DRY_RUN", "run_key": date, "stats": payload["stats"]}
     result = _req("POST", "rpc/apply_match_run", {"payload": payload})
-    return {"status": "APPLIED", "run_key": date, "stats": payload["stats"], "db": result}
+    return {"status": "APPLIED", "run_key": date, "stats": payload["stats"], "db": result, "learn": learned}
 
 
 # ---------------------------------------------------------------- HTTP 핸들러

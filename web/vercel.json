@@ -1,8 +1,14 @@
 {
-  "regions": ["icn1"],
+  "regions": [
+    "icn1"
+  ],
   "functions": {
     "api/match.py": {
       "maxDuration": 60,
+      "excludeFiles": "{.next,node_modules,public,src}/**"
+    },
+    "api/learn.py": {
+      "maxDuration": 30,
       "excludeFiles": "{.next,node_modules,public,src}/**"
     }
   }

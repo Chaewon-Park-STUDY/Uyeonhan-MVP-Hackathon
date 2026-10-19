@@ -1,0 +1,128 @@
+import { notFound, redirect } from "next/navigation";
+import { ButtonLink, Card, ErrorBox, Label, Page, Submit, inputCls } from "@/components/ui";
+import { REGION_LABEL, fmtDate } from "@/lib/labels";
+import { getMe } from "@/lib/supabase/server";
+import { submitFeedback } from "./actions";
+
+type Status = { can_feedback: boolean; feedback_done: boolean; demo: boolean };
+type Member = { profile_id: string; nickname: string; is_me: boolean };
+type Info = { starts_at: string; region_code: string; venue_name: string | null };
+
+const SCORES = [
+  ["1", "😞", "별로"], ["2", "😕", "아쉬움"], ["3", "🙂", "보통"], ["4", "😊", "좋음"], ["5", "🤩", "최고"],
+] as const;
+const PEOPLE = [
+  ["LIKE", "또 만나고 싶어요"], ["NEUTRAL", "괜찮았어요"], ["AVOID", "다시는 안 만날래요"], ["ABSENT", "안 왔어요"],
+] as const;
+
+export default async function FeedbackPage({ params, searchParams }: {
+  params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }>;
+}) {
+  const { id } = await params;
+  const { error } = await searchParams;
+  const { supabase, user } = await getMe();
+  if (!user) redirect(`/login?next=/feedback/${id}`);
+
+  const [{ data: st }, { data: info }, { data: roster }] = await Promise.all([
+    supabase.rpc("my_table_status", { p_table: id }).maybeSingle<Status>(),
+    supabase.rpc("table_info", { p_table_id: id }).maybeSingle<Info>(),
+    supabase.rpc("table_roster", { p_table_id: id }),
+  ]);
+  if (!st || !info) notFound();
+  if (st.feedback_done) redirect(`/feedback/${id}/done`);
+  const others = ((roster ?? []) as Member[]).filter((m) => !m.is_me);
+
+  if (!st.can_feedback) {
+    return (
+      <Page title="피드백" back={`/table/${id}`}>
+        <Card><p className="text-sm text-[#7A5E4B]">모임이 끝난 뒤에 남길 수 있어요. ({fmtDate(info.starts_at)})</p></Card>
+      </Page>
+    );
+  }
+
+  return (
+    <Page title="오늘 식탁은 어땠나요?" back={`/table/${id}`}>
+      <p className="-mt-3 mb-5 text-sm text-[#7A5E4B]">
+        {fmtDate(info.starts_at)} · {info.venue_name ?? REGION_LABEL[info.region_code]}
+        <br />1분이면 끝나요. 남겨 주신 답은 다음 매칭을 더 잘 맞추는 데 쓰여요.
+      </p>
+      {st.demo && <p className="mb-4 rounded-xl bg-[#F3E6D6] px-3 py-2 text-xs">시연 모드: 모임 전이라도 피드백을 남겨 볼 수 있어요.</p>}
+      <ErrorBox message={error} />
+
+      <form action={submitFeedback} className="space-y-4">
+        <input type="hidden" name="table_id" value={id} />
+        <Card>
+          <Label hint="필수">테이블 전체 만족도</Label>
+          <Rating name="table_score" required />
+          <Label>대화는 잘 통했나요?</Label>
+          <Rating name="convo_score" />
+          <Label>식당은 어땠나요?</Label>
+          <Rating name="venue_score" />
+        </Card>
+
+        {others.length > 0 && (
+          <Card>
+            <Label hint="상대방에게는 절대 공개되지 않아요">함께한 사람들</Label>
+            <div className="space-y-3">
+              {others.map((m) => (
+                <div key={m.profile_id}>
+                  <p className="mb-1.5 text-sm font-semibold">{m.nickname}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PEOPLE.map(([v, label]) => (
+                      <label key={v} className="cursor-pointer">
+                        <input type="radio" name={`p_${m.profile_id}`} value={v} defaultChecked={v === "NEUTRAL"} className="peer sr-only" />
+                        <span className="inline-block rounded-full border border-[#E8DCCD] bg-[#FFFDF9] px-3 py-1.5 text-xs peer-checked:border-[#B9784A] peer-checked:bg-[#B9784A] peer-checked:text-white">
+                          {label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-[#9A7B66]">
+              &ldquo;또 만나고 싶어요&rdquo;는 다음 매칭에 반영하고, &ldquo;다시는 안 만날래요&rdquo;를 고르면 앞으로 같은 테이블에 배정하지 않아요.
+            </p>
+          </Card>
+        )}
+
+        <Card>
+          <Label hint="선택">하고 싶은 말</Label>
+          <textarea name="comment" rows={3} maxLength={500} placeholder="좋았던 점, 아쉬웠던 점을 자유롭게 남겨 주세요" className={inputCls} />
+
+          {others.length > 0 && (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm text-[#A2412A]">불편한 일이 있었나요? 신고하기</summary>
+              <div className="mt-3 space-y-2">
+                <select name="report_to" className={inputCls} defaultValue="">
+                  <option value="">대상 선택</option>
+                  {others.map((m) => <option key={m.profile_id} value={m.profile_id}>{m.nickname}</option>)}
+                </select>
+                <textarea name="report_reason" rows={2} maxLength={500} placeholder="어떤 일이 있었는지 알려 주세요" className={inputCls} />
+                <p className="text-xs text-[#9A7B66]">신고하면 즉시 서로 같은 테이블에 배정되지 않고, 운영자가 확인 후 조치해요.</p>
+              </div>
+            </details>
+          )}
+        </Card>
+
+        <Submit>피드백 보내고 쿠폰 받기</Submit>
+      </form>
+      <div className="mt-3"><ButtonLink href={`/table/${id}`} tone="ghost">나중에 할게요</ButtonLink></div>
+    </Page>
+  );
+}
+
+function Rating({ name, required }: { name: string; required?: boolean }) {
+  return (
+    <div className="grid grid-cols-5 gap-1.5">
+      {SCORES.map(([v, emoji, word]) => (
+        <label key={v} className="cursor-pointer">
+          <input type="radio" name={name} value={v} required={required} className="peer sr-only" />
+          <span className="flex flex-col items-center rounded-xl border border-[#E8DCCD] bg-[#FFFDF9] py-2 text-xs peer-checked:border-[#B9784A] peer-checked:bg-[#B9784A] peer-checked:text-white">
+            <span className="text-xl">{emoji}</span>{word}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}

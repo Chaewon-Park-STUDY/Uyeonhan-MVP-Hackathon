@@ -2,7 +2,7 @@
 -- 데모 계정 초기화 (Supabase SQL Editor에서 실행, 여러 번 실행해도 안전)
 --   demo.new         : 프로필·신청·결제 기록을 모두 지워 "처음 가입한 상태"로
 --   demo.alternative : "다른 일정 선택 필요" 상태로 되돌리고, 지금 신청 가능한 회차를 다시 제안
---   demo.matched     : 손대지 않음 (확정 테이블 그대로)
+--   demo.matched     : 확정 테이블은 그대로, 체크인·취소·피드백·쿠폰 기록만 지움 (피드백 시연을 다시 할 수 있게)
 -- 심사 제출 직전에 한 번 실행한다.
 -- =====================================================================
 do $$
@@ -11,6 +11,8 @@ declare
                   where u.email = 'demo.new@uyeonhan.kr');
   v_alt uuid := (select p.id from profiles p join auth.users u on u.id = p.auth_user_id
                   where u.email = 'demo.alternative@uyeonhan.kr');
+  v_mat uuid := (select p.id from profiles p join auth.users u on u.id = p.auth_user_id
+                  where u.email = 'demo.matched@uyeonhan.kr');
   v_app uuid;
 begin
   perform set_config('app.actor', 'admin:demo_reset', true);
@@ -26,6 +28,23 @@ begin
     delete from coupons            where user_id = v_new;
     delete from notifications      where user_id = v_new;
     delete from profiles           where id = v_new;
+  end if;
+
+  -- demo.matched: 모임 전 상태로 -----------------------------------------------
+  if v_mat is not null then
+    update table_members set attendance = 'SCHEDULED', checked_in_at = null, canceled_at = null where user_id = v_mat;
+    delete from feedback           where user_id = v_mat;
+    delete from person_preferences where from_user = v_mat;
+    delete from attendance_votes   where voter_id = v_mat;
+    delete from blocks             where blocker_id = v_mat;
+    delete from exception_cases    where kind = 'SAFETY' and table_id in (select table_id from safety_reports where reporter_id = v_mat);
+    delete from safety_reports     where reporter_id = v_mat;
+    delete from coupons            where user_id = v_mat and kind = 'REVISIT';
+    delete from chat_messages      where sender_id = v_mat;
+    delete from chat_messages      where sender_id is null and content like '%님이 도착했어요%'
+                                     and room_id in (select c.id from chat_rooms c join table_members m on m.table_id = c.table_id where m.user_id = v_mat);
+    delete from exception_cases    where reason like '취소로 테이블 인원이%'
+                                     and table_id in (select table_id from table_members where user_id = v_mat);
   end if;
 
   -- demo.alternative: 매칭 실패 직후 상태로 ----------------------------------

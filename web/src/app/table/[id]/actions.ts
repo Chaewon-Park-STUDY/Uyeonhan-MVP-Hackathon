@@ -33,3 +33,20 @@ export async function moreTopics(formData: FormData) {
   await admin.from("chat_messages").insert({ room_id: info.room_id, kind: "TOPIC", content });
   revalidatePath(`/table/${tableId}`);
 }
+
+// 도착 체크인 / 좌석 취소
+export async function checkIn(formData: FormData) {
+  const tableId = String(formData.get("table_id"));
+  const supabase = await createClient();
+  await supabase.rpc("check_in", { p_table: tableId });
+  revalidatePath(`/table/${tableId}`);
+}
+
+export async function cancelSeat(formData: FormData) {
+  const tableId = String(formData.get("table_id"));
+  if (formData.get("confirm") !== "on") return;
+  const supabase = await createClient();
+  await supabase.rpc("cancel_my_seat", { p_table: tableId });
+  revalidatePath(`/table/${tableId}`);
+  revalidatePath("/");
+}

@@ -22,7 +22,7 @@ export default async function NotificationsPage() {
       <div className="space-y-2">
         {list.map((n) => {
           const t = notiText(n.template, n.payload);
-          const href = `/table/${n.payload.table_id}`;
+          const href = n.template === "FEEDBACK_REQUEST" ? `/feedback/${n.payload.table_id}` : `/table/${n.payload.table_id}`;
           return (
             <Link key={n.id} href={href} className="block">
               <Card className={`py-4 ${n.read_at ? "" : "ring-1 ring-[#B9784A]"}`}>

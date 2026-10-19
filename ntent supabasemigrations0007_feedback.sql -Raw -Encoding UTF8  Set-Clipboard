@@ -1,0 +1,39 @@
+warning: in the working copy of 'scripts/demo_reset.sql', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/api/match.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/apply/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/apply/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/globals.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/layout.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/login/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/login/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/notifications/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/onboarding/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/onboarding/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/pay/[id]/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/pay/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/profile/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/resolve/[id]/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/resolve/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/table/[id]/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/table/[id]/chat.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/app/table/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/components/pending.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/components/profile-summary.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/components/ui.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/lib/labels.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/lib/supabase/browser.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/lib/supabase/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/lib/topics.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/src/proxy.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web/vercel.json', LF will be replaced by CRLF the next time Git touches it
+ scripts/demo_reset.sql             | 21 [32m+++++++++++++++[m[31m-[m
+ web/api/match.py                   |  9 [32m++++++[m[31m-[m
+ web/src/app/notifications/page.tsx |  2 [32m+[m[31m-[m
+ web/src/app/table/[id]/actions.ts  | 17 [32m+++++++++++++[m
+ web/src/app/table/[id]/page.tsx    | 51 [32m+++++++++++++++++++++++++++++++++++[m[31m---[m
+ web/src/lib/labels.ts              |  4 [32m+++[m
+ web/src/proxy.ts                   |  2 [32m+[m[31m-[m
+ web/vercel.json                    |  8 [32m+++++[m[31m-[m
+ 8 files changed, 106 insertions(+), 8 deletions(-)

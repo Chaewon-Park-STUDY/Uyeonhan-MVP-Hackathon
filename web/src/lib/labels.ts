@@ -127,6 +127,10 @@ export const ERROR_TEXT: Record<string, string> = {
   INVALID_COUPON: "사용할 수 없는 쿠폰이에요.",
   SLOT_NOT_OFFERED: "제안된 회차 중에서 골라 주세요.",
   RESTRICTED_UNTIL: "노쇼 누적으로 신청이 잠시 제한돼 있어요.",
+  SCORE_REQUIRED: "테이블 전체 만족도를 골라 주세요.",
+  FEEDBACK_CLOSED: "모임이 끝난 뒤에 피드백을 남길 수 있어요.",
+  CHECKIN_CLOSED: "체크인은 모임 1시간 전부터 할 수 있어요.",
+  CANCEL_CLOSED: "모임이 시작된 뒤에는 취소할 수 없어요.",
 };
 
 export function errorText(message: string) {
