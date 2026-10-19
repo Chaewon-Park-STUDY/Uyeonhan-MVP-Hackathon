@@ -23,7 +23,9 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
   const names = Object.fromEntries(roster.map((m, i) => [m.profile_id, `${m.nickname}${dupSuffix(roster, i)}`]));
 
   // 서버에서 새 메시지(대화 주제 등)를 받아 오면 합치기
-  useEffect(() => setMsgs((cur) => merge(cur, initial)), [initial]);
+  useEffect(() => {
+    setMsgs((cur) => merge(cur, initial));
+  }, [initial]);
 
   // 실시간 수신 (Supabase Realtime, RLS 적용)
   useEffect(() => {
@@ -36,7 +38,10 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
     return () => { supabase.removeChannel(ch); };
   }, [roomId]);
 
-  useEffect(() => bottom.current?.scrollIntoView({ behavior: "smooth" }), [msgs.length]);
+  // 주의: 반환값이 없어야 한다 (최신 Chrome의 scrollIntoView는 Promise를 반환 → React가 정리 함수로 오인)
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs.length]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
