@@ -8,14 +8,38 @@ export type Msg = { id: number; sender_id: string | null; kind: string; content:
   deleted_at?: string | null };
 type Member = { profile_id: string; nickname: string; is_me: boolean; animals?: string[] | null; age_band?: string };
 
-const SYSTEM_STYLE: Record<string, string> = {
-  NOTICE: "bg-[#FBF1EC]",
-  CURATION: "bg-[#F4E4DE]",
-  TOPIC: "bg-[#EEF4EA]",
-  REMINDER: "bg-[#FCEDE8]",
-  POLICY: "border border-[#E9DCD3] bg-white",
-  GAME: "bg-[#FFF6DD]",
+// 운영 안내 메시지: 제목·색으로 구분하고, 한 묶음으로 접어서 참가자 대화와 섞이지 않게
+const BOT: Record<string, { title: string; color: string }> = {
+  WELCOME: { title: "👋 환영 인사", color: "#7A1F2B" },
+  VENUE: { title: "📍 장소·예약", color: "#2F6B3A" },
+  CURATION: { title: "✨ 이 테이블은요", color: "#C9A227" },
+  TOPIC: { title: "💬 대화 주제", color: "#4A7FA7" },
+  POLICY: { title: "📌 참석 안내", color: "#A2412A" },
+  GAME: { title: "🎲 아이스브레이킹", color: "#8A5CB8" },
+  REMINDER: { title: "⏰ 리마인드", color: "#C46A1F" },
+  NOTICE: { title: "📢 안내", color: "#8B6A66" },
 };
+const botKind = (m: Msg) =>
+  m.kind !== "NOTICE" ? m.kind : m.content.startsWith("📍") ? "VENUE" : m.content.includes("환영") ? "WELCOME" : "NOTICE";
+// 한 줄짜리 소식(예: 한 분이 못 오게 됐어요)은 카톡처럼 가운데 회색 한 줄로
+const isLine = (m: Msg) => m.kind === "NOTICE" && !m.content.includes("\n") && botKind(m) === "NOTICE";
+// 처음 보내기 어려울 때 누르면 바로 입력되는 문장
+const QUICK = ["안녕하세요! 목요일에 봬요 👋", "조금 늦을 것 같아요 🙏", "도착했어요! 🙌", "자리 어디쯤이세요?"];
+
+type Block = { type: "bot"; items: Msg[] } | { type: "line"; m: Msg } | { type: "user"; m: Msg };
+function toBlocks(msgs: Msg[]): Block[] {
+  const out: Block[] = [];
+  for (const m of msgs) {
+    if (m.sender_id) out.push({ type: "user", m });
+    else if (isLine(m)) out.push({ type: "line", m });
+    else {
+      const last = out[out.length - 1];
+      if (last?.type === "bot") last.items.push(m);
+      else out.push({ type: "bot", items: [m] });
+    }
+  }
+  return out;
+}
 
 // 이모티콘: 누르면 바로 "크게" 보내기 (카카오톡 이모티콘처럼), 입력 중이면 글에 끼워 넣기
 const EMOJIS = ["😀", "😂", "🥰", "😍", "🤗", "😉", "😎", "🥳", "😭", "😅", "🙏", "👍",
@@ -97,20 +121,20 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
   return (
     <div>
       <div className="space-y-2" onClick={() => setMenuFor(null)}>
-        {msgs.map((m) => {
-          if (!m.sender_id) {
+        {toBlocks(msgs).map((b, bi, all) => {
+          if (b.type === "bot") return <BotBundle key={`b${b.items[0].id}`} items={b.items} openLast={bi === all.length - 1 && bi > 0} />;
+          if (b.type === "line") {
             return (
-              <p key={m.id} className={`whitespace-pre-line rounded-xl px-3 py-2.5 text-sm ${SYSTEM_STYLE[m.kind] ?? "bg-[#FBF1EC]"}`}>
-                {m.content}
-              </p>
+              <p key={b.m.id} className="mx-auto w-fit rounded-full bg-[#EFE3DC] px-3 py-1 text-center text-xs text-[#6A4A4C]">{b.m.content}</p>
             );
           }
+          const m = b.m;
           const mine = m.sender_id === me?.profile_id;
           const deleted = !!m.deleted_at;
           const big = !deleted && ONLY_EMOJI.test(m.content);
           return (
             <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-              {!mine && <span className="mb-0.5 text-[11px] text-[#8B6A66]">{names[m.sender_id] ?? "참가자"}</span>}
+              {!mine && <span className="mb-0.5 text-[11px] text-[#8B6A66]">{names[m.sender_id!] ?? "참가자"}</span>}
               <div className="relative flex max-w-[80%] items-end gap-1">
                 {mine && !deleted && (
                   <button type="button" aria-label="메시지 메뉴"
@@ -138,6 +162,9 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
             </div>
           );
         })}
+        {!msgs.some((m) => m.sender_id) && (
+          <p className="py-3 text-center text-xs text-[#8B6A66]">— 여기부터 테이블 친구들과 대화해요. 먼저 인사를 건네 보세요! —</p>
+        )}
         <div ref={bottom} />
       </div>
 
@@ -148,6 +175,16 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
               <button key={e} type="button" onClick={() => pickEmoji(e)} className="rounded-lg py-1.5 text-2xl hover:bg-[#FBF1EC]">{e}</button>
             ))}
             <p className="col-span-8 px-1 pt-1 text-[11px] text-[#B7A3A0]">빈 칸에서 누르면 크게 보내지고, 글을 쓰는 중이면 글에 들어가요.</p>
+          </div>
+        )}
+        {!text && (
+          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5">
+            {QUICK.map((q) => (
+              <button key={q} type="button" onClick={() => setText(q)}
+                      className="shrink-0 rounded-full border border-[#E9DCD3] bg-white px-3 py-1.5 text-xs text-[#6A4A4C] hover:border-[#7A1F2B]">
+                {q}
+              </button>
+            ))}
           </div>
         )}
         <form onSubmit={send} className="flex gap-2">
@@ -163,6 +200,40 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
           </button>
         </form>
         {error && <p className="mt-1 text-xs text-[#A2412A]">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+// 운영 안내 묶음: 제목 목록만 보이고, 누르면 내용이 펼쳐짐
+function BotBundle({ items, openLast }: { items: Msg[]; openLast: boolean }) {
+  const [open, setOpen] = useState<number | null>(openLast ? items[items.length - 1].id : null);
+  return (
+    <div className="flex items-start gap-2">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#7A1F2B] text-sm text-white">🍽️</span>
+      <div className="min-w-0 flex-1">
+        <p className="mb-1 text-[11px] text-[#8B6A66]">우연한 식탁 운영팀 · 안내 {items.length}개</p>
+        <div className="overflow-hidden rounded-2xl border border-[#EFE3DC] bg-white">
+          {items.map((m, i) => {
+            const k = BOT[botKind(m)] ?? BOT.NOTICE;
+            const isOpen = open === m.id;
+            return (
+              <div key={m.id} className={i ? "border-t border-[#F4ECE6]" : ""}>
+                <button type="button" onClick={() => setOpen(isOpen ? null : m.id)}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm">
+                  <span className="h-full w-1 self-stretch rounded-full" style={{ background: k.color }} />
+                  <span className="font-semibold" style={{ color: k.color }}>{k.title}</span>
+                  <span className="ml-auto text-xs text-[#B7A3A0]">{isOpen ? "접기 ▲" : "보기 ▼"}</span>
+                </button>
+                {isOpen && (
+                  <p className="whitespace-pre-line px-4 pb-3 text-sm leading-relaxed text-[#2E1B1E]">
+                    {m.content.replace(/^(📍|📌|🎲)\s*/, "")}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
