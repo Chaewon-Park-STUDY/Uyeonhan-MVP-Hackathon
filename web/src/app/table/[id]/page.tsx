@@ -26,7 +26,7 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
     supabase.rpc("table_intro", { p_table_id: id }),
     supabase.rpc("table_roster", { p_table_id: id }),
     info.room_id
-      ? supabase.from("chat_messages").select("id, sender_id, kind, content, created_at")
+      ? supabase.from("chat_messages").select("id, sender_id, kind, content, created_at, deleted_at")
           .eq("room_id", info.room_id).order("id").limit(200)
       : Promise.resolve({ data: [] }),
     supabase.rpc("my_table_status", { p_table: id }).maybeSingle<Status>(),

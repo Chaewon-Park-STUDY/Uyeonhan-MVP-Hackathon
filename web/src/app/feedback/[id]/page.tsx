@@ -52,7 +52,7 @@ export default async function FeedbackPage({ params, searchParams }: {
       <form action={submitFeedback} className="space-y-4">
         <input type="hidden" name="table_id" value={id} />
         <Card>
-          <Label hint="필수">테이블 전체 만족도</Label>
+          <Label hint="꼭 골라 주세요">테이블 전체 만족도 <span className="text-[#A2412A]">*</span></Label>
           <Rating name="table_score" required />
           <Label>대화는 잘 통했나요?</Label>
           <Rating name="convo_score" />
@@ -117,7 +117,7 @@ function Rating({ name, required }: { name: string; required?: boolean }) {
     <div className="grid grid-cols-5 gap-1.5">
       {SCORES.map(([v, emoji, word]) => (
         <label key={v} className="cursor-pointer">
-          <input type="radio" name={name} value={v} required={required} className="peer sr-only" />
+          <input type="radio" name={name} value={v} required={required} className="peer sr-only scroll-mt-32" />
           <span className="flex flex-col items-center rounded-xl border border-[#E8DCCD] bg-[#FFFDF9] py-2 text-xs peer-checked:border-[#B9784A] peer-checked:bg-[#B9784A] peer-checked:text-white">
             <span className="text-xl">{emoji}</span>{word}
           </span>
