@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Arch, BrandSymbol, DiamondRule, WaxSeal } from "./brand";
+import { Arch, DiamondRule, WaxSeal } from "./brand";
+import { TableIllustration } from "./table-illustration";
 
 type Stage = "closed" | "opening" | "open";
 const SEEN_KEY = "uy_invite_opened";
@@ -63,7 +64,7 @@ export function Invitation({ nextDate, regions }: { nextDate: string | null; reg
           <h1 className="mt-3 font-serif text-5xl font-extrabold leading-[1.15] text-[#7A1F2B]">우연한<br />식탁</h1>
           <DiamondRule className="mx-6 mt-5 text-[#C9A227]" />
           <p className="mt-4 font-serif text-lg leading-relaxed">처음 보는 사람들과<br />좋은 저녁 한 끼</p>
-          <BrandSymbol className="mx-auto mt-4 h-10 w-16 text-[#7A1F2B]" />
+          <TableIllustration className="mx-auto mt-4 w-56" />
 
           <div className="mt-5 rounded-xl bg-[#F4E4DE]/60 px-4 py-3 text-sm">
             {nextDate ? (

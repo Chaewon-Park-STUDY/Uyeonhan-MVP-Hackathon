@@ -1,6 +1,7 @@
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
 import { DiamondRule, WaxSeal } from "@/components/brand";
 import { Invitation } from "@/components/invitation";
+import { TableIllustration } from "@/components/table-illustration";
 import { ProfileSummary } from "@/components/profile-summary";
 import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, mainAnimal, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
@@ -40,6 +41,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           <span className="inline-block"><WaxSeal size={60} /></span>
           <p className="mt-3 font-serif text-sm tracking-widest text-[#7A1F2B]">초대를 수락해 주셔서 고마워요</p>
           <h1 className="mt-2 font-serif text-2xl font-extrabold text-[#7A1F2B]">이제 당신의 자리 카드를<br />만들어 볼까요?</h1>
+          <TableIllustration className="mx-auto mt-4 w-48" />
           <DiamondRule className="mx-8 mt-4 text-[#C9A227]" />
           <ol className="mx-auto mt-4 max-w-[260px] space-y-1.5 text-left text-sm text-[#6A4A4C]">
             <li>① 기본 정보와 MBTI</li>
@@ -86,7 +88,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
       {apps.length === 0 ? (
         <Card>
-          <p className="mb-4 text-sm text-[#6A4A4C]">아직 신청한 식탁이 없어요.</p>
+          <TableIllustration className="mx-auto mb-3 w-40" guests={["🐻", "🦉", "🐱", "❔"]} />
+          <p className="mb-4 text-center text-sm text-[#6A4A4C]">아직 신청한 식탁이 없어요.<br />빈자리 하나가 당신을 기다리고 있어요.</p>
           <ButtonLink href="/apply">참가 신청하기</ButtonLink>
         </Card>
       ) : (
