@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Badge, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { FEATURE_LABEL, requireAdmin } from "@/lib/admin";
-import { REGION_LABEL, animalOf, byRarity, fmtDate } from "@/lib/labels";
+import { REGION_LABEL, animalOf, byRarity } from "@/lib/labels";
 
 type T = {
   id: string; status: string; score: number | null; score_breakdown: Record<string, number> | null;
@@ -39,54 +39,61 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
         ))}
       </div>
       {tables.length === 0 && <Card><p className="text-sm text-[#8B6A66]">이 날짜에는 아직 만들어진 테이블이 없어요. 매칭은 화요일 24:00 이후 자동 실행돼요.</p></Card>}
-      <div className="grid gap-4 md:grid-cols-2">
+      <p className="text-sm text-[#8B6A66]">테이블을 누르면 멤버와 이 테이블을 만든 이유가 펼쳐져요.</p>
+      <div className="space-y-2.5">
         {tables.map((t, i) => {
           const ages = t.table_members.map((m) => year - m.profiles.birth_year);
           const f = t.table_members.filter((m) => m.profiles.gender === "F").length;
+          const issues = t.table_members.filter((m) => ["NO_SHOW", "CANCELED_LATE", "CANCELED_EARLY"].includes(m.attendance)).length;
+          const score = t.score ?? 0;
+          const grade = score >= 4.3 ? ["아주 잘 맞음", "bg-[#E3F1E4] text-[#2F6B3A]"] : score >= 4.0 ? ["잘 맞음", "bg-[#F4E4DE] text-[#7A1F2B]"] : ["보통", "bg-[#EEE9E4] text-[#8A7F77]"];
           return (
-            <Card key={t.id}>
-              <div className="flex flex-wrap items-center gap-2">
-                <b>#{i + 1} {REGION_LABEL[t.event_slots.region_code]}</b>
-                <Badge tone={t.status === "CONFIRMED" ? "ok" : "muted"}>{t.status === "CONFIRMED" ? "확정" : t.status}</Badge>
-                <span className="text-xs text-[#8B6A66]">{fmtDate(t.event_slots.starts_at)}</span>
-              </div>
-              <p className="mt-1 text-xs text-[#6A4A4C]">
-                📍 {t.venues?.name ?? "식당 미배정 (예외함 확인)"} · {t.table_members.length}명 (여 {f} · 남 {t.table_members.length - f}) · 나이 {Math.min(...ages)}~{Math.max(...ages)}세
-              </p>
-              <ul className="mt-3 space-y-1 text-xs">
-                {t.table_members.map((m, j) => (
-                  <li key={j} className="flex items-center justify-between">
-                    <span>{animalOf(byRarity(m.profiles.self_traits)[0])?.emoji} {m.profiles.name} · {year - m.profiles.birth_year}세 · {m.profiles.gender === "F" ? "여" : "남"} · {m.profiles.mbti ?? "-"}
-                      {m.reallocation_count > 0 && <span className="ml-1 text-[#8B6A66]">(재배치 {m.reallocation_count})</span>}</span>
-                    <span className={m.attendance === "NO_SHOW" || m.attendance === "CANCELED_LATE" ? "text-[#A2412A]" : "text-[#8B6A66]"}>{ATT[m.attendance] ?? m.attendance}</span>
-                  </li>
-                ))}
-              </ul>
-              {t.score_breakdown && (
-                <div className="mt-3 border-t border-[#EFE3DC] pt-2 text-[11px]">
-                  <p className="mb-1.5 text-[#8B6A66]">
-                    이 테이블을 만든 이유 · 예상 만족도 <b className="text-[#7A1F2B]">{t.score?.toFixed(2)}</b> / 5점
-                    <span className="ml-1 text-[#B7A3A0]">(각 기준 100점 만점, 높을수록 잘 맞음)</span>
-                  </p>
-                  <div className="space-y-1">
+            <details key={t.id} open={!!sp.table} className="group rounded-2xl bg-white shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                <span className="text-base font-bold">#{i + 1} {REGION_LABEL[t.event_slots.region_code]}</span>
+                <span className="text-xl tracking-tight">{t.table_members.map((m) => animalOf(byRarity(m.profiles.self_traits)[0])?.emoji ?? "🙂").join("")}</span>
+                <span className="text-sm text-[#6A4A4C]">{t.table_members.length}명 · 여 {f} 남 {t.table_members.length - f} · {Math.min(...ages)}~{Math.max(...ages)}세</span>
+                <span className="text-sm text-[#6A4A4C]">📍 {t.venues?.name?.replace(/^\[샘플\]\s*/, "") ?? "식당 미배정"}</span>
+                <span className={`ml-auto rounded-full px-3 py-1 text-sm font-semibold ${grade[1]}`}>{grade[0]} · {score.toFixed(1)}점</span>
+                {issues > 0 && <span className="rounded-full bg-[#FCEDE8] px-3 py-1 text-sm text-[#A2412A]">취소·노쇼 {issues}</span>}
+                <span className="text-[#B7A3A0] transition group-open:rotate-180">▾</span>
+              </summary>
+              <div className="grid gap-5 border-t border-[#EFE3DC] px-5 py-4 md:grid-cols-2">
+                <ul className="space-y-2 text-sm">
+                  {t.table_members.map((m, j) => (
+                    <li key={j} className="flex items-center justify-between gap-2">
+                      <span>
+                        <span className="mr-1.5 text-lg">{animalOf(byRarity(m.profiles.self_traits)[0])?.emoji}</span>
+                        <b>{m.profiles.name}</b> · {year - m.profiles.birth_year}세 · {m.profiles.gender === "F" ? "여" : "남"} · {m.profiles.mbti ?? "-"}
+                        {m.reallocation_count > 0 && <span className="ml-1 text-xs text-[#8B6A66]">(다른 지역에서 이동)</span>}
+                      </span>
+                      <span className={m.attendance === "NO_SHOW" || m.attendance === "CANCELED_LATE" ? "text-[#A2412A]" : "text-[#8B6A66]"}>{ATT[m.attendance] ?? m.attendance}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="text-sm">
+                  <p className="mb-2 font-semibold">이 테이블을 만든 이유 <span className="font-normal text-[#8B6A66]">(각 100점 만점)</span></p>
+                  <div className="space-y-1.5">
                     {Object.entries(FEATURE_LABEL).map(([k, label]) => {
                       const v = Math.round((t.score_breakdown?.[k] ?? 0) * 100);
                       return (
                         <div key={k} className="flex items-center gap-2">
-                          <span className="w-28 shrink-0 truncate text-[#6A4A4C]">{label}</span>
-                          <span className="relative h-2.5 flex-1 rounded-full bg-[#F4E4DE]">
-                            {[25, 50, 75].map((g) => <span key={g} className="absolute top-0 h-2.5 w-px bg-white" style={{ left: `${g}%` }} />)}
-                            <span className="absolute left-0 top-0 h-2.5 rounded-full bg-[#7A1F2B]" style={{ width: `${v}%` }} />
+                          <span className="w-36 shrink-0 text-[#6A4A4C]">{label}</span>
+                          <span className="relative h-3 flex-1 rounded-full bg-[#F4E4DE]">
+                            {[25, 50, 75].map((g) => <span key={g} className="absolute top-0 h-3 w-px bg-white" style={{ left: `${g}%` }} />)}
+                            <span className="absolute left-0 top-0 h-3 rounded-full bg-[#7A1F2B]" style={{ width: `${v}%` }} />
                           </span>
-                          <b className="w-8 text-right text-[#2E1B1E]">{v}</b>
+                          <b className="w-9 text-right">{v}</b>
                         </div>
                       );
                     })}
                   </div>
-                  {(t.explanation?.shared_interests ?? []).length > 0 && <p className="mt-1 text-[#6A4A4C]">공통 관심사: {t.explanation!.shared_interests!.join(", ")}</p>}
+                  {(t.explanation?.shared_interests ?? []).length > 0 && (
+                    <p className="mt-2 text-[#6A4A4C]">함께 나눌 이야기: <b>{t.explanation!.shared_interests!.join(", ")}</b></p>
+                  )}
                 </div>
-              )}
-            </Card>
+              </div>
+            </details>
           );
         })}
       </div>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { mainAnimal } from "@/lib/labels";
 import { createBrowser } from "@/lib/supabase/browser";
 
 export type Msg = { id: number; sender_id: string | null; kind: string; content: string; created_at: string;
   deleted_at?: string | null };
-type Member = { profile_id: string; nickname: string; is_me: boolean };
+type Member = { profile_id: string; nickname: string; is_me: boolean; animals?: string[] | null; age_band?: string };
 
 const SYSTEM_STYLE: Record<string, string> = {
   NOTICE: "bg-[#FBF1EC]",
@@ -28,7 +29,8 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
   const [menuFor, setMenuFor] = useState<number | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const me = roster.find((m) => m.is_me);
-  const names = Object.fromEntries(roster.map((m, i) => [m.profile_id, `${m.nickname}${dupSuffix(roster, i)}`]));
+  const names = Object.fromEntries(roster.map((m, i) => [m.profile_id,
+    `${mainAnimal(m.animals)?.emoji ?? ""} ${m.nickname}${dupSuffix(roster, i)}${m.age_band ? ` · ${m.age_band}` : ""}`.trim()]));
 
   // 서버에서 새 메시지(대화 주제 등)를 받아 오면 합치기
   useEffect(() => {

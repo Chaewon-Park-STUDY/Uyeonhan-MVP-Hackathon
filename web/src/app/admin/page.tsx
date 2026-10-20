@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PendingButton } from "@/components/pending";
-import { FEATURE_LABEL, callEngine, certainty, requireAdmin } from "@/lib/admin";
+import { FEATURE_LABEL, callEngine, requireAdmin } from "@/lib/admin";
 import { fmtDate } from "@/lib/labels";
 import { runLearn, runMatch } from "./actions";
 import { Schedule } from "./schedule";
@@ -113,49 +113,57 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
               <PendingButton className="rounded-lg border border-[#E9DCD3] px-2.5 py-1 text-xs" pendingText="반영 중…">피드백 지금 반영</PendingButton>
             </form>
           </div>
-          <p className="mb-3 text-xs leading-relaxed text-[#8B6A66]">
-            각 기준을 잘 맞췄을 때 참가자 만족도(5점 만점)가 <b>몇 점 올라가는지</b>예요. 처음엔 설정 화면의 비중대로 시작하고,
-            피드백이 쌓이면 실제로 중요한 기준은 커지고 덜 중요한 기준은 작아져요. 지금까지 반영된 테이블: <b>{learn.n_tables ?? 0}개</b>
+          <p className="mb-3 text-sm leading-relaxed text-[#6A4A4C]">
+            참가자 만족에 <b>어떤 기준이 얼마나 중요한지</b> 순위로 보여줘요. 처음엔 설정 화면의 비중대로 시작하고,
+            피드백이 쌓이면 실제로 만족도를 높인 기준의 비중이 커져요.
+          </p>
+          <p className="mb-3 rounded-lg bg-[#FBF1EC] px-3 py-2 text-sm">
+            {(learn.n_tables ?? 0) === 0
+              ? "아직 반영된 피드백이 없어서 처음 설정 그대로예요. 모임이 끝나고 피드백이 쌓이면 자동으로 바뀌어요."
+              : `피드백 ${learn.n_tables}개 테이블을 반영했어요.`}
           </p>
           {learn.error ? (
-            <p className="text-xs text-[#A2412A]">학습 기능에 연결하지 못했어요. 잠시 후 새로고침해 주세요.</p>
-          ) : (
-            <div className="space-y-3">
-              {Object.entries(FEATURE_LABEL).map(([k, label]) => {
-                const prior = 2 * (weights[k] ?? 0);
-                const m = learn.coef?.[k] ?? prior;
-                const sd = learn.coef_sd?.[k] ?? 0;
-                const c = certainty(sd);
-                const pct = (v: number) => `${Math.max(0, Math.min(100, (v / 1.5) * 100))}%`;
-                return (
-                  <div key={k} className="text-xs">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="font-medium text-[#2E1B1E]">{label}</span>
-                      <span>
-                        처음 <b>+{prior.toFixed(2)}</b> → 지금 <b className="text-[#7A1F2B]">+{m.toFixed(2)}점</b>
-                        <span className={`ml-1.5 ${c.tone}`}>({c.label})</span>
-                      </span>
+            <p className="text-sm text-[#A2412A]">지금은 계산 결과를 불러오지 못했어요. 잠시 후 새로고침해 주세요.</p>
+          ) : (() => {
+            const keys = Object.keys(FEATURE_LABEL);
+            const now = keys.map((k) => Math.max(0, learn.coef?.[k] ?? 2 * (weights[k] ?? 0)));
+            const tot = now.reduce((a, b) => a + b, 0) || 1;
+            const rows = keys.map((k, i) => ({ k, label: FEATURE_LABEL[k], now: now[i] / tot, first: weights[k] ?? 0, sd: learn.coef_sd?.[k] ?? 1 }))
+              .sort((a, b) => b.now - a.now);
+            return (
+              <div className="space-y-3">
+                {rows.map((r, i) => {
+                  const diff = Math.round((r.now - r.first) * 100);
+                  return (
+                    <div key={r.k} className="text-sm">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span><b className="mr-1.5 text-[#C9A227]">{i + 1}위</b><span className="font-medium">{r.label}</span></span>
+                        <span>
+                          <b className="text-[#7A1F2B]">{Math.round(r.now * 100)}%</b>
+                          {diff !== 0 && <span className={`ml-1.5 text-xs ${diff > 0 ? "text-[#2F6B3A]" : "text-[#A2412A]"}`}>{diff > 0 ? `▲ ${diff}%p` : `▼ ${-diff}%p`}</span>}
+                          <span className="ml-1.5 text-xs text-[#8B6A66]">(처음 {Math.round(r.first * 100)}%)</span>
+                        </span>
+                      </div>
+                      <div className="relative mt-1 h-3 rounded-full bg-[#F4E4DE]">
+                        <span className="absolute left-0 top-0 h-3 rounded-full bg-[#7A1F2B]" style={{ width: `${Math.min(100, r.now * 200)}%` }} />
+                        <span className="absolute -top-0.5 h-4 w-0.5 bg-[#C9A227]" style={{ left: `${Math.min(100, r.first * 200)}%` }} />
+                      </div>
                     </div>
-                    <div className="relative mt-1 h-2.5 rounded-full bg-[#F4E4DE]">
-                      <span className="absolute left-0 top-0 h-2.5 rounded-full bg-[#7A1F2B]" style={{ width: pct(m) }} />
-                      <span className="absolute -top-0.5 h-3.5 w-0.5 bg-[#C9A227]" style={{ left: pct(prior) }} title="처음 설정" />
-                    </div>
-                    <div className="mt-0.5 flex justify-between text-[10px] text-[#B7A3A0]"><span>0</span><span>+0.5</span><span>+1.0</span><span>+1.5점</span></div>
-                  </div>
-                );
-              })}
-              <p className="text-[11px] text-[#8B6A66]">빨간 막대 = 지금 반영된 값 · 금색 선 = 처음 설정값</p>
+                  );
+                })}
+                <p className="text-xs text-[#8B6A66]">빨간 막대 = 지금 비중 · 금색 선 = 처음 설정 · 비중은 설정 화면에서 바꿀 수 있어요</p>
               <details className="rounded-lg bg-[#FBF1EC] px-3 py-2 text-[11px] text-[#6A4A4C]">
                 <summary className="cursor-pointer">어떻게 계산하나요? (기술 설명)</summary>
                 <p className="mt-1.5 leading-relaxed">
                   테이블 만족도 = 기본값 + Σ(기준 점수 × 영향력) 으로 보고, 운영자 설정을 출발점(사전분포)으로 피드백을 반영하는
-                  베이지안 선형회귀(Normal–Inverse-Gamma)를 써요. 괄호 안 &ldquo;확실한 정도&rdquo;는 추정의 표준편차(±{(learn.coef_sd?.gender ?? 0).toFixed(2)} 등)로 정해요.
+                  베이지안 선형회귀(Normal–Inverse-Gamma)를 써요. 비중은 추정된 영향력(사후평균)을 합이 100%가 되도록 나눈 값이에요.
                   매칭 방식(안정적/새 조합 시도)의 근거는 <a href={REPORT_URL} target="_blank" rel="noreferrer" className="underline">시뮬레이션 보고서</a>에 있어요.
                   현재 방식: <b>{String(cfg.matching?.policy ?? "mean") === "thompson" ? "새 조합도 시도 (Thompson Sampling)" : "안정적으로 (사후평균)"}</b>
                 </p>
               </details>
-            </div>
-          )}
+              </div>
+            );
+          })()}
         </Card>
 
         {/* 지역 확장 수요 */}

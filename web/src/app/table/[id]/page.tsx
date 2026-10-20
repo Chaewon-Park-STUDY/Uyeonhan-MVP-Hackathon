@@ -78,7 +78,7 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
       </div>
       {info.room_id ? (
         <ChatRoom roomId={info.room_id} initial={(msgs ?? []) as Msg[]}
-                  roster={(roster ?? []) as { profile_id: string; nickname: string; is_me: boolean }[]} />
+                  roster={(roster ?? []) as { profile_id: string; nickname: string; is_me: boolean; animals?: string[] | null; age_band?: string }[]} />
       ) : (
         <Card><p className="text-sm text-[#8B6A66]">단체방을 준비하고 있어요.</p></Card>
       )}

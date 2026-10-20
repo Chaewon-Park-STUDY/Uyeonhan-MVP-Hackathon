@@ -1,11 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import { ButtonLink, Card, ErrorBox, Label, Page, Submit, inputCls } from "@/components/ui";
-import { REGION_LABEL, fmtDate } from "@/lib/labels";
+import { REGION_LABEL, fmtDate, mainAnimal } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 import { submitFeedback } from "./actions";
 
 type Status = { can_feedback: boolean; feedback_done: boolean; demo: boolean };
-type Member = { profile_id: string; nickname: string; is_me: boolean };
+type Member = { profile_id: string; nickname: string; is_me: boolean; age_band: string; mbti: string | null;
+  interests: string[] | null; animals: string[] | null };
 type Info = { starts_at: string; region_code: string; venue_name: string | null };
 
 const SCORES = [
@@ -66,7 +67,13 @@ export default async function FeedbackPage({ params, searchParams }: {
             <div className="space-y-3">
               {others.map((m) => (
                 <div key={m.profile_id}>
-                  <p className="mb-1.5 text-sm font-semibold">{m.nickname}</p>
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F9E7E3] text-xl">{mainAnimal(m.animals)?.emoji ?? "🙂"}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{m.nickname} <span className="font-normal text-[#6A4A4C]">· {m.age_band}{m.mbti ? ` · ${m.mbti}` : ""}</span></p>
+                      <p className="truncate text-xs text-[#8B6A66]">{mainAnimal(m.animals)?.name}{(m.interests ?? []).length ? ` · ${(m.interests ?? []).slice(0, 2).join(", ")}` : ""}</p>
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {PEOPLE.map(([v, label]) => (
                       <label key={v} className="cursor-pointer">
@@ -96,7 +103,7 @@ export default async function FeedbackPage({ params, searchParams }: {
               <div className="mt-3 space-y-2">
                 <select name="report_to" className={inputCls} defaultValue="">
                   <option value="">대상 선택</option>
-                  {others.map((m) => <option key={m.profile_id} value={m.profile_id}>{m.nickname}</option>)}
+                  {others.map((m) => <option key={m.profile_id} value={m.profile_id}>{mainAnimal(m.animals)?.emoji} {m.nickname} · {m.age_band}{m.mbti ? ` · ${m.mbti}` : ""}</option>)}
                 </select>
                 <textarea name="report_reason" rows={2} maxLength={500} placeholder="어떤 일이 있었는지 알려 주세요" className={inputCls} />
                 <p className="text-xs text-[#8B6A66]">신고하면 즉시 서로 같은 테이블에 배정되지 않고, 운영자가 확인 후 조치해요.</p>
