@@ -10,10 +10,10 @@ export function ProfileSummary({ p, editHref }: { p: P; editHref?: string }) {
   return (
     <Card>
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           {(p.self_traits ?? []).length > 0 && (
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFF3E6] text-3xl">
-              {(p.self_traits ?? []).map((v) => animalOf(v)?.emoji).filter(Boolean).join("")}
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFF3E6] text-3xl leading-none">
+              {animalOf((p.self_traits ?? [])[0])?.emoji}
             </span>
           )}
           <div>
@@ -24,11 +24,11 @@ export function ProfileSummary({ p, editHref }: { p: P; editHref?: string }) {
             {p.job ? ` · ${p.job}` : ""}
           </p>
           {(p.self_traits ?? []).length > 0 && (
-            <p className="mt-0.5 text-xs text-[#B9784A]">{(p.self_traits ?? []).map((v) => animalOf(v)?.name).filter(Boolean).join(" · ")}</p>
+            <p className="mt-0.5 text-xs text-[#B9784A]">{(p.self_traits ?? []).slice(0, 2).map((v) => animalOf(v)?.name).filter(Boolean).join(" · ")}</p>
           )}
           </div>
         </div>
-        {editHref && <Link href={editHref} className="text-sm text-[#B9784A]">내 프로필</Link>}
+        {editHref && <Link href={editHref} className="shrink-0 whitespace-nowrap pl-2 text-sm text-[#B9784A]">내 프로필</Link>}
       </div>
       {(p.interests ?? []).length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">

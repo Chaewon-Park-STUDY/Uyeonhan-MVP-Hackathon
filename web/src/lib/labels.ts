@@ -28,7 +28,8 @@ const LEGACY_WANT: Record<string, string> = {
   "깊은 대화가 되는 사람": "깊은 대화를 좋아함",
   "열정 있는 사람": "활기차고 에너지 있는 편",
 };
-export const animalOf = (v: string) =>
+export const animalOf = (v?: string) =>
+  v === undefined ? undefined :
   [...ANIMALS, ...WANT_EXTRA].find((a) => a.value === (LEGACY_WANT[v] ?? v));
 
 export const ALLERGIES = ["갑각류", "견과류", "유제품", "밀", "달걀"];
