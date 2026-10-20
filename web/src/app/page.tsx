@@ -1,6 +1,6 @@
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
 import { ProfileSummary } from "@/components/profile-summary";
-import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, animalOf, fmtDate, fmtDeadline, won } from "@/lib/labels";
+import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, mainAnimal, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 
 type SlotRow = { id: string; starts_at: string; region_code: string; apply_deadline: string };
@@ -123,7 +123,7 @@ function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReu
             <ul className="grid grid-cols-2 gap-2 text-xs">
               {intro.map((p, i) => (
                 <li key={i} className={`rounded-xl border px-3 py-2 ${p.is_me ? "border-[#B9784A] bg-[#FFF8F0]" : "border-[#EFE4D6]"}`}>
-                  <span className="mr-1">{animalOf((p.animals ?? [])[0])?.emoji}</span><b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
+                  <span className="mr-1">{mainAnimal(p.animals)?.emoji}</span><b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
                   <p className="mt-0.5 truncate text-[#9A7B66]">{p.interests.slice(0, 2).join(", ")}</p>
                 </li>
               ))}

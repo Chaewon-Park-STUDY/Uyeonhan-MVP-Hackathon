@@ -28,6 +28,13 @@ const LEGACY_WANT: Record<string, string> = {
   "깊은 대화가 되는 사람": "깊은 대화를 좋아함",
   "열정 있는 사람": "활기차고 에너지 있는 편",
 };
+// 대표 동물: 고른 카드 중 가장 드문 카드 (시드 264명 기준 선택 빈도 오름차순) → 그 사람만의 특징이 드러나게
+const RARITY = ["이야기를 이끄는 편", "활기차고 에너지 있는 편", "잔잔하고 조용한 편",
+  "가볍고 유머 있는 대화를 좋아함", "깊은 대화를 좋아함", "경청을 잘 함"];
+export const byRarity = (xs?: string[] | null) =>
+  [...(xs ?? [])].sort((a, b) => (RARITY.indexOf(a) + 99) % 99 - (RARITY.indexOf(b) + 99) % 99);
+export const mainAnimal = (xs?: string[] | null) => animalOf(byRarity(xs)[0]);
+
 export const animalOf = (v?: string) =>
   v === undefined ? undefined :
   [...ANIMALS, ...WANT_EXTRA].find((a) => a.value === (LEGACY_WANT[v] ?? v));

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
-import { ageBand, animalOf } from "@/lib/labels";
+import { ageBand, animalOf, byRarity, mainAnimal } from "@/lib/labels";
 
 type P = { name: string; birth_year: number; gender: string; job: string | null; mbti: string | null; interests: string[] | null;
   self_traits?: string[] | null };
@@ -13,7 +13,7 @@ export function ProfileSummary({ p, editHref }: { p: P; editHref?: string }) {
         <div className="flex min-w-0 items-center gap-3">
           {(p.self_traits ?? []).length > 0 && (
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFF3E6] text-3xl leading-none">
-              {animalOf((p.self_traits ?? [])[0])?.emoji}
+              {mainAnimal(p.self_traits)?.emoji}
             </span>
           )}
           <div>
@@ -24,7 +24,7 @@ export function ProfileSummary({ p, editHref }: { p: P; editHref?: string }) {
             {p.job ? ` · ${p.job}` : ""}
           </p>
           {(p.self_traits ?? []).length > 0 && (
-            <p className="mt-0.5 text-xs text-[#B9784A]">{(p.self_traits ?? []).slice(0, 2).map((v) => animalOf(v)?.name).filter(Boolean).join(" · ")}</p>
+            <p className="mt-0.5 text-xs text-[#B9784A]">{byRarity(p.self_traits).slice(0, 2).map((v) => animalOf(v)?.name).filter(Boolean).join(" · ")}</p>
           )}
           </div>
         </div>
