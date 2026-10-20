@@ -19,7 +19,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       <form action={saveSettings} className="space-y-4">
         {saved && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">저장했어요. 다음 매칭부터 적용돼요.</p>}
         <Card>
-          <Label hint="합이 1이 되도록 자동으로 맞춰요. 이 값은 베이지안 학습의 출발점(사전평균)이 되고, 피드백이 쌓이면 학습값이 이를 보정해요">매칭 가중치 (선호 조건)</Label>
+          <Label hint="어떤 기준을 더 중요하게 볼지 정해요. 합이 1이 되도록 자동으로 맞춰요. 피드백이 쌓이면 실제 만족도에 맞게 자동으로 보정돼요">매칭 기준 비중</Label>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {Object.entries(FEATURE_LABEL).map(([k, label]) => (
               <label key={k} className="text-xs">
@@ -29,15 +29,15 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             ))}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">확정 최소 점수 (0~1)</span>
+            <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">테이블 확정 최소 점수 (0~1, 낮추면 더 많이 확정)</span>
               <input name="min_score" type="number" step="0.05" min="0" max="1" defaultValue={Number(m.min_score ?? 0.45)} className={`${inputCls} py-2`} /></label>
             <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">최대 나이 차이 (필수 조건)</span>
               <input name="max_age_gap" type="number" min="3" max="20" defaultValue={Number(m.max_age_gap ?? 8)} className={`${inputCls} py-2`} /></label>
           </div>
-          <Label hint="시뮬레이션 결과 30회차 안에서는 사후평균이 누적 손실이 가장 작아 기본값으로 둬요">매칭 정책</Label>
+          <Label hint="모의 실험(30주) 결과 처음 몇 달은 안정적인 방식이 만족도가 가장 높았어요">매칭 방식</Label>
           <div className="space-y-2 text-sm">
-            <label className="flex items-center gap-2"><input type="radio" name="policy" value="mean" defaultChecked={m.policy !== "thompson"} className="accent-[#7A1F2B]" /> 사후평균 (안정적, 기본)</label>
-            <label className="flex items-center gap-2"><input type="radio" name="policy" value="thompson" defaultChecked={m.policy === "thompson"} className="accent-[#7A1F2B]" /> Thompson Sampling (탐색, 새 특성을 빨리 배워야 할 때)</label>
+            <label className="flex items-center gap-2"><input type="radio" name="policy" value="mean" defaultChecked={m.policy !== "thompson"} className="accent-[#7A1F2B]" /> 안정적으로 <span className="text-xs text-[#8B6A66]">— 지금까지 잘 맞았던 기준대로 (추천)</span></label>
+            <label className="flex items-center gap-2"><input type="radio" name="policy" value="thompson" defaultChecked={m.policy === "thompson"} className="accent-[#7A1F2B]" /> 새로운 조합도 시도 <span className="text-xs text-[#8B6A66]">— 비슷한 사람만 반복될 때, 새 기준을 빨리 배워야 할 때</span></label>
           </div>
         </Card>
         <Card>

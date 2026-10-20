@@ -30,9 +30,16 @@ export async function callEngine(path: "match" | "learn", query: Record<string, 
 }
 
 export const FEATURE_LABEL: Record<string, string> = {
-  gender: "성비 균형", mbti: "MBTI(E/I) 균형", interest: "관심사 공통", desired: "원하는 동물 충족", novelty: "새로운 만남",
+  gender: "성비 균형", mbti: "성향(외향·내향) 균형", interest: "관심사가 겹침", desired: "원하는 동물이 있음", novelty: "처음 만나는 사이",
 };
 
 export const EXCEPTION_LABEL: Record<string, string> = {
   PAYMENT: "결제", DATA: "데이터", VENUE: "식당", CONFLICT: "인원·충돌", NOTIFY: "알림", REFUND: "환불", SAFETY: "안전·신고",
 };
+
+// 학습 결과의 확실한 정도 (표준편차 → 쉬운 말)
+export function certainty(sd: number) {
+  if (sd < 0.12) return { label: "확실해요", tone: "text-[#2F6B3A]" };
+  if (sd < 0.25) return { label: "어느 정도", tone: "text-[#9C7A12]" };
+  return { label: "아직 데이터 부족", tone: "text-[#8B6A66]" };
+}

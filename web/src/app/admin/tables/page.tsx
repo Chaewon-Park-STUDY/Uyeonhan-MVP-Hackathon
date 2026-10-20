@@ -64,16 +64,24 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
               </ul>
               {t.score_breakdown && (
                 <div className="mt-3 border-t border-[#EFE3DC] pt-2 text-[11px]">
-                  <p className="mb-1 text-[#8B6A66]">매칭 근거 · 예측 만족도 <b className="text-[#7A1F2B]">{t.score?.toFixed(2)}</b> / 5</p>
-                  <div className="grid grid-cols-5 gap-1">
-                    {Object.entries(FEATURE_LABEL).map(([k, label]) => (
-                      <div key={k} title={label}>
-                        <div className="flex h-10 flex-col justify-end overflow-hidden rounded bg-[#F4E4DE]">
-                          <div className="rounded bg-[#7A1F2B]" style={{ height: `${(t.score_breakdown?.[k] ?? 0) * 100}%` }} />
+                  <p className="mb-1.5 text-[#8B6A66]">
+                    이 테이블을 만든 이유 · 예상 만족도 <b className="text-[#7A1F2B]">{t.score?.toFixed(2)}</b> / 5점
+                    <span className="ml-1 text-[#B7A3A0]">(각 기준 100점 만점, 높을수록 잘 맞음)</span>
+                  </p>
+                  <div className="space-y-1">
+                    {Object.entries(FEATURE_LABEL).map(([k, label]) => {
+                      const v = Math.round((t.score_breakdown?.[k] ?? 0) * 100);
+                      return (
+                        <div key={k} className="flex items-center gap-2">
+                          <span className="w-28 shrink-0 truncate text-[#6A4A4C]">{label}</span>
+                          <span className="relative h-2.5 flex-1 rounded-full bg-[#F4E4DE]">
+                            {[25, 50, 75].map((g) => <span key={g} className="absolute top-0 h-2.5 w-px bg-white" style={{ left: `${g}%` }} />)}
+                            <span className="absolute left-0 top-0 h-2.5 rounded-full bg-[#7A1F2B]" style={{ width: `${v}%` }} />
+                          </span>
+                          <b className="w-8 text-right text-[#2E1B1E]">{v}</b>
                         </div>
-                        <p className="mt-0.5 truncate text-center text-[#8B6A66]">{label.split(" ")[0]}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {(t.explanation?.shared_interests ?? []).length > 0 && <p className="mt-1 text-[#6A4A4C]">공통 관심사: {t.explanation!.shared_interests!.join(", ")}</p>}
                 </div>

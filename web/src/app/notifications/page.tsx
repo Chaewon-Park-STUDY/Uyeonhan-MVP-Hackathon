@@ -8,11 +8,11 @@ type Noti = { id: string; template: string; payload: { table_id?: string; starts
   sent_at: string; read_at: string | null };
 
 export default async function NotificationsPage() {
-  const { supabase, user } = await getMe();
+  const { supabase, user, profile } = await getMe();
   if (!user) redirect("/login?next=/notifications");
 
   const { data } = await supabase.from("notifications").select("id, template, payload, sent_at, read_at")
-    .not("sent_at", "is", null).order("sent_at", { ascending: false }).limit(50);
+    .eq("user_id", profile?.id ?? "").not("sent_at", "is", null).order("sent_at", { ascending: false }).limit(50);
   const list = (data ?? []) as Noti[];
   await supabase.rpc("mark_notifications_read");
 

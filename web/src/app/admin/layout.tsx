@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-serif text-xl font-bold text-[#7A1F2B]">운영자 어드민</p>
+        <p className="font-serif text-xl font-bold text-[#7A1F2B]">운영 관리</p>
         <nav className="flex flex-wrap gap-1.5 text-sm">
           {TABS.map(([href, label]) => (
             <Link key={href} href={href} className="rounded-full border border-[#E9DCD3] bg-white px-3 py-1.5 hover:border-[#7A1F2B]">

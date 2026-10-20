@@ -15,9 +15,9 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 async function Header() {
   const { supabase, user, profile } = await getMe();
-  const { count: unread } = user
+  const { count: unread } = user && profile
     ? await supabase.from("notifications").select("id", { count: "exact", head: true })
-        .not("sent_at", "is", null).is("read_at", null)
+        .eq("user_id", profile.id).not("sent_at", "is", null).is("read_at", null)
     : { count: 0 };
   return (
     <header className="sticky top-0 z-10 border-b border-[#EFE3DC] bg-[#FBF7F0]/90 backdrop-blur">

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PendingButton } from "@/components/pending";
-import { FEATURE_LABEL, callEngine, requireAdmin } from "@/lib/admin";
+import { FEATURE_LABEL, callEngine, certainty, requireAdmin } from "@/lib/admin";
 import { fmtDate } from "@/lib/labels";
 import { runLearn, runMatch } from "./actions";
+import { Schedule } from "./schedule";
 
 type Row = { run_date: string; slots: number; open_slots: number; apps_total: number; apps_paid: number; apps_pending: number;
-  confirmed_tables: number; confirmed_people: number; offered: number; matched_at: string | null; match_run_at: string };
+  confirmed_tables: number; confirmed_people: number; offered: number; matched_at: string | null; match_run_at: string; deadline: string };
 type Learn = { n_tables?: number; coef?: Record<string, number>; coef_sd?: Record<string, number>; status?: string; error?: string };
 type Summary = { n_tables: number; n_feedback: number; avg_table: number | null; avg_convo: number | null; avg_venue: number | null;
   like_count: number; avoid_count: number; reports: number; no_shows: number };
@@ -38,10 +39,16 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       {sp.learn && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">학습 결과: {sp.learn}</p>}
       {result && (
         <Card className="text-sm">
-          <p className="font-semibold">{result.date} 매칭 {result.dry ? "미리보기(저장 안 함)" : "실행"} 결과</p>
-          <pre className="mt-2 overflow-x-auto rounded-lg bg-[#FBF1EC] p-3 text-xs">{JSON.stringify(result.out, null, 2)}</pre>
+          <p className="font-semibold">{result.date} 매칭 {result.dry ? "미리보기 (저장하지 않았어요)" : "실행 완료"}</p>
+          <MatchSummary out={result.out} />
+          <details className="mt-2 text-xs text-[#8B6A66]">
+            <summary className="cursor-pointer">원본 결과 보기</summary>
+            <pre className="mt-2 overflow-x-auto rounded-lg bg-[#FBF1EC] p-3">{JSON.stringify(result.out, null, 2)}</pre>
+          </details>
         </Card>
       )}
+
+      <Schedule rows={dates.map((d) => ({ run_date: d.run_date, deadline: d.deadline, matched_at: d.matched_at }))} />
 
       {/* 핵심 숫자 */}
       {next && (
@@ -98,41 +105,55 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       </Card>
 
       <div className="grid gap-5 md:grid-cols-2">
-        {/* 학습 상태 */}
+        {/* 학습 상태 — 운영자용 쉬운 말, 기술 설명은 접어 둠 */}
         <Card>
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-semibold">매칭 가중치 학습 (베이지안)</h2>
+            <h2 className="font-semibold">피드백으로 배우는 매칭 기준</h2>
             <form action={runLearn}>
-              <PendingButton className="rounded-lg border border-[#E9DCD3] px-2.5 py-1 text-xs" pendingText="학습 중…">지금 학습</PendingButton>
+              <PendingButton className="rounded-lg border border-[#E9DCD3] px-2.5 py-1 text-xs" pendingText="반영 중…">피드백 지금 반영</PendingButton>
             </form>
           </div>
-          <p className="mb-3 text-xs text-[#8B6A66]">
-            피드백 {learn.n_tables ?? 0}테이블로 갱신한 사후평균(±1 표준편차)과 운영자 설정값(사전평균)을 비교해요. 데이터가 없으면 설정값과 같아요.
+          <p className="mb-3 text-xs leading-relaxed text-[#8B6A66]">
+            각 기준을 잘 맞췄을 때 참가자 만족도(5점 만점)가 <b>몇 점 올라가는지</b>예요. 처음엔 설정 화면의 비중대로 시작하고,
+            피드백이 쌓이면 실제로 중요한 기준은 커지고 덜 중요한 기준은 작아져요. 지금까지 반영된 테이블: <b>{learn.n_tables ?? 0}개</b>
           </p>
           {learn.error ? (
-            <p className="text-xs text-[#A2412A]">학습 엔진에 연결하지 못했어요: {learn.error}</p>
+            <p className="text-xs text-[#A2412A]">학습 기능에 연결하지 못했어요. 잠시 후 새로고침해 주세요.</p>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {Object.entries(FEATURE_LABEL).map(([k, label]) => {
                 const prior = 2 * (weights[k] ?? 0);
                 const m = learn.coef?.[k] ?? prior;
                 const sd = learn.coef_sd?.[k] ?? 0;
-                const scale = (v: number) => `${Math.max(0, Math.min(100, (v / 1.5) * 100))}%`;
+                const c = certainty(sd);
+                const pct = (v: number) => `${Math.max(0, Math.min(100, (v / 1.5) * 100))}%`;
                 return (
                   <div key={k} className="text-xs">
-                    <div className="flex justify-between"><span>{label}</span><span>설정 {prior.toFixed(2)} → 학습 <b>{m.toFixed(2)}</b> ± {sd.toFixed(2)}</span></div>
-                    <div className="relative mt-1 h-3 rounded-full bg-[#F4E4DE]">
-                      <span className="absolute top-0 h-3 rounded-full bg-[#C9A227]/40" style={{ left: scale(m - sd), width: `calc(${scale(m + sd)} - ${scale(m - sd)})` }} />
-                      <span className="absolute top-0 h-3 w-1 rounded-full bg-[#7A1F2B]" style={{ left: scale(m) }} />
-                      <span className="absolute -top-0.5 h-4 w-0.5 bg-[#2E1B1E]" style={{ left: scale(prior) }} title="운영자 설정" />
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-medium text-[#2E1B1E]">{label}</span>
+                      <span>
+                        처음 <b>+{prior.toFixed(2)}</b> → 지금 <b className="text-[#7A1F2B]">+{m.toFixed(2)}점</b>
+                        <span className={`ml-1.5 ${c.tone}`}>({c.label})</span>
+                      </span>
                     </div>
+                    <div className="relative mt-1 h-2.5 rounded-full bg-[#F4E4DE]">
+                      <span className="absolute left-0 top-0 h-2.5 rounded-full bg-[#7A1F2B]" style={{ width: pct(m) }} />
+                      <span className="absolute -top-0.5 h-3.5 w-0.5 bg-[#C9A227]" style={{ left: pct(prior) }} title="처음 설정" />
+                    </div>
+                    <div className="mt-0.5 flex justify-between text-[10px] text-[#B7A3A0]"><span>0</span><span>+0.5</span><span>+1.0</span><span>+1.5점</span></div>
                   </div>
                 );
               })}
-              <p className="pt-1 text-[11px] text-[#8B6A66]">
-                ▮ 학습값 · 금색 막대 ±1SD · 검은 선 운영자 설정 · 정책: <b>{String(cfg.matching?.policy ?? "mean") === "thompson" ? "Thompson Sampling" : "사후평균"}</b>{" "}
-                (<a href={REPORT_URL} target="_blank" rel="noreferrer" className="underline">시뮬레이션 보고서</a>)
-              </p>
+              <p className="text-[11px] text-[#8B6A66]">빨간 막대 = 지금 반영된 값 · 금색 선 = 처음 설정값</p>
+              <details className="rounded-lg bg-[#FBF1EC] px-3 py-2 text-[11px] text-[#6A4A4C]">
+                <summary className="cursor-pointer">어떻게 계산하나요? (기술 설명)</summary>
+                <p className="mt-1.5 leading-relaxed">
+                  테이블 만족도 = 기본값 + Σ(기준 점수 × 영향력) 으로 보고, 운영자 설정을 출발점(사전분포)으로 피드백을 반영하는
+                  베이지안 선형회귀(Normal–Inverse-Gamma)를 써요. 괄호 안 &ldquo;확실한 정도&rdquo;는 추정의 표준편차(±{(learn.coef_sd?.gender ?? 0).toFixed(2)} 등)로 정해요.
+                  매칭 방식(안정적/새 조합 시도)의 근거는 <a href={REPORT_URL} target="_blank" rel="noreferrer" className="underline">시뮬레이션 보고서</a>에 있어요.
+                  현재 방식: <b>{String(cfg.matching?.policy ?? "mean") === "thompson" ? "새 조합도 시도 (Thompson Sampling)" : "안정적으로 (사후평균)"}</b>
+                </p>
+              </details>
             </div>
           )}
         </Card>
@@ -177,4 +198,26 @@ function Kpi({ label, value, sub, href, warn }: { label: string; value: number |
     </Card>
   );
   return href ? <Link href={href}>{body}</Link> : body;
+}
+
+function MatchSummary({ out }: { out: Record<string, unknown> }) {
+  if (out.error) return <p className="mt-2 text-[#A2412A]">실행하지 못했어요: {String(out.error)}</p>;
+  if (out.status === "NOTHING_DUE") return <p className="mt-2 text-[#6A4A4C]">지금 실행할 회차가 없어요.</p>;
+  if ((out.db as { status?: string } | undefined)?.status === "ALREADY_RUN") return <p className="mt-2 text-[#6A4A4C]">이미 매칭이 끝난 날짜예요.</p>;
+  const st = (out.stats ?? {}) as Record<string, number | null>;
+  const items: [string, number | string | null | undefined][] = [
+    ["매칭 대상 (결제 완료)", st.applications], ["만들어진 테이블", st.tables_confirmed], ["자리 배정", st.placed],
+    ["다음 희망 날짜로 넘김", st.carried_over], ["다른 회차 제안", st.failed],
+    ["예상 평균 만족도 (5점)", st.mean_pred],
+  ];
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-3">
+      {items.map(([k, v]) => (
+        <div key={k} className="rounded-lg bg-[#FBF1EC] px-3 py-2">
+          <p className="text-[11px] text-[#8B6A66]">{k}</p>
+          <p className="text-lg font-bold text-[#7A1F2B]">{v ?? "-"}</p>
+        </div>
+      ))}
+    </div>
+  );
 }
