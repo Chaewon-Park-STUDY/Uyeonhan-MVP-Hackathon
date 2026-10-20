@@ -26,5 +26,10 @@ export async function submitFeedback(formData: FormData) {
   if (error && !error.message.includes("ALREADY_SUBMITTED")) {
     redirect(`/feedback/${tableId}?error=${encodeURIComponent(errorText(error.message))}`);
   }
+  if (!error) {
+    await supabase.rpc("set_feedback_intents", {
+      p_table: tableId, p_revisit: Number(one("revisit_intent")) || 0, p_recommend: Number(one("recommend_intent")) || 0,
+    });
+  }
   redirect(`/feedback/${tableId}/done`);
 }

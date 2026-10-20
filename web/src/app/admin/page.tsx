@@ -4,6 +4,7 @@ import { PendingButton } from "@/components/pending";
 import { FEATURE_LABEL, callEngine, requireAdmin } from "@/lib/admin";
 import { fmtDate } from "@/lib/labels";
 import { runLearn, runMatch } from "./actions";
+import { RegionMap } from "./region-map";
 import { Schedule } from "./schedule";
 
 type Row = { run_date: string; slots: number; open_slots: number; apps_total: number; apps_paid: number; apps_pending: number;
@@ -11,8 +12,6 @@ type Row = { run_date: string; slots: number; open_slots: number; apps_total: nu
 type Learn = { n_tables?: number; coef?: Record<string, number>; coef_sd?: Record<string, number>; status?: string; error?: string };
 type Summary = { n_tables: number; n_feedback: number; avg_table: number | null; avg_convo: number | null; avg_venue: number | null;
   like_count: number; avoid_count: number; reports: number; no_shows: number };
-
-const REPORT_URL = "https://github.com/Chaewon-Park-STUDY/Uyeonhan-MVP-Hackathon/blob/main/docs/reports/2026-10-20_thompson_simulation.md";
 
 export default async function AdminHome({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
@@ -31,6 +30,9 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const dates = (rows ?? []) as Row[];
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   const next = dates.find((d) => d.run_date >= today) ?? dates[dates.length - 1];
+  const { data: regionStats } = next
+    ? await supabase.rpc("admin_region_stats", { p_date: next.run_date })
+    : { data: [] };
   const result = sp.result ? (JSON.parse(sp.result) as { date: string; dry: boolean; out: Record<string, unknown> }) : null;
 
   return (
@@ -41,10 +43,6 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
         <Card className="text-sm">
           <p className="font-semibold">{result.date} 매칭 {result.dry ? "미리보기 (저장하지 않았어요)" : "실행 완료"}</p>
           <MatchSummary out={result.out} />
-          <details className="mt-2 text-xs text-[#8B6A66]">
-            <summary className="cursor-pointer">원본 결과 보기</summary>
-            <pre className="mt-2 overflow-x-auto rounded-lg bg-[#FBF1EC] p-3">{JSON.stringify(result.out, null, 2)}</pre>
-          </details>
         </Card>
       )}
 
@@ -105,7 +103,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       </Card>
 
       <div className="grid gap-5 md:grid-cols-2">
-        {/* 학습 상태 — 운영자용 쉬운 말, 기술 설명은 접어 둠 */}
+        {/* 학습 상태 — 운영자용 쉬운 말 (계산 방식은 DESIGN.md) */}
         <Card>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="font-semibold">피드백으로 배우는 매칭 기준</h2>
@@ -152,41 +150,22 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                   );
                 })}
                 <p className="text-xs text-[#8B6A66]">빨간 막대 = 지금 비중 · 금색 선 = 처음 설정 · 비중은 설정 화면에서 바꿀 수 있어요</p>
-              <details className="rounded-lg bg-[#FBF1EC] px-3 py-2 text-[11px] text-[#6A4A4C]">
-                <summary className="cursor-pointer">어떻게 계산하나요? (기술 설명)</summary>
-                <p className="mt-1.5 leading-relaxed">
-                  테이블 만족도 = 기본값 + Σ(기준 점수 × 영향력) 으로 보고, 운영자 설정을 출발점(사전분포)으로 피드백을 반영하는
-                  베이지안 선형회귀(Normal–Inverse-Gamma)를 써요. 비중은 추정된 영향력(사후평균)을 합이 100%가 되도록 나눈 값이에요.
-                  매칭 방식(안정적/새 조합 시도)의 근거는 <a href={REPORT_URL} target="_blank" rel="noreferrer" className="underline">시뮬레이션 보고서</a>에 있어요.
-                  현재 방식: <b>{String(cfg.matching?.policy ?? "mean") === "thompson" ? "새 조합도 시도 (Thompson Sampling)" : "안정적으로 (사후평균)"}</b>
-                </p>
-              </details>
               </div>
             );
           })()}
         </Card>
 
-        {/* 지역 확장 수요 */}
+        {/* 지역 지도 */}
         <Card>
-          <h2 className="mb-2 font-semibold">서울 외 지역 확장 수요</h2>
-          <p className="mb-3 text-xs text-[#8B6A66]">대기 명단이 {threshold}명 이상 모인 지역은 개설을 검토해요. &ldquo;서울 회차도 괜찮아요&rdquo;를 고른 사람은 서울 매칭에도 들어가요.</p>
-          {(demand ?? []).length === 0 ? (
-            <p className="text-sm text-[#8B6A66]">아직 대기 명단이 없어요.</p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {((demand ?? []) as { area: string; people: number; accept_seoul: number }[]).map((r) => (
-                <li key={r.area} className="flex items-center gap-2">
-                  <span className="w-24 shrink-0">{r.area}</span>
-                  <span className="relative h-3 flex-1 rounded-full bg-[#F4E4DE]">
-                    <span className="absolute h-3 rounded-full bg-[#7A1F2B]" style={{ width: `${Math.min(100, (r.people / threshold) * 100)}%` }} />
-                  </span>
-                  <span className="w-28 text-right text-xs">{r.people}/{threshold}명 {r.people >= threshold && <b className="text-[#7A1F2B]">개설 검토</b>}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <h2 className="mb-1 font-semibold">지역별 현황 지도</h2>
+          <p className="mb-2 text-xs text-[#8B6A66]">서울 밖은 대기 명단이 {threshold}명 모이면 개설을 검토해요.</p>
+          <RegionMap
+            regions={((regionStats ?? []) as { region_code: string; label: string; apps: number; tables: number }[])
+              .map((r) => ({ code: r.region_code, label: r.label, apps: Number(r.apps), tables: Number(r.tables) }))}
+            demand={((demand ?? []) as { area: string; people: number }[]).map((d) => ({ area: d.area, people: Number(d.people) }))}
+            threshold={threshold} dateLabel={next?.run_date ?? "-"} />
           {sum && (
-            <div className="mt-5 border-t border-[#EFE3DC] pt-3 text-xs text-[#6A4A4C]">
+            <div className="mt-4 border-t border-[#EFE3DC] pt-3 text-xs text-[#6A4A4C]">
               <p className="mb-1 font-semibold text-[#2E1B1E]">피드백 요약</p>
               대화 {sum.avg_convo ?? "-"} · 식당 {sum.avg_venue ?? "-"} · 또 만나고 싶어요 {sum.like_count} · 다시는 {sum.avoid_count} · 노쇼 {sum.no_shows}
             </div>

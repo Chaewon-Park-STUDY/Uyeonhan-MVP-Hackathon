@@ -68,13 +68,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const apps = (data ?? []) as unknown as AppRow[];
 
   const intros: Record<string, Intro[]> = {};
-  for (const a of apps) {
+  const fbDone: Record<string, boolean> = {};
+  await Promise.all(apps.map(async (a) => {
     const tid = a.table_members?.table_id;
     if (a.match_status === "CONFIRMED" && tid) {
-      const { data: rows } = await supabase.rpc("table_intro", { p_table_id: tid });
+      const [{ data: rows }, { data: st }] = await Promise.all([
+        supabase.rpc("table_intro", { p_table_id: tid }),
+        supabase.rpc("my_table_status", { p_table: tid }).maybeSingle<{ feedback_done: boolean }>(),
+      ]);
       intros[a.id] = (rows ?? []) as Intro[];
+      fbDone[a.id] = !!st?.feedback_done;
     }
-  }
+  }));
 
   return (
     <Page>
@@ -95,7 +100,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       ) : (
         <div className="space-y-4">
           {apps.map((a) => (
-            <AppCard key={a.id} a={a} intro={intros[a.id]}
+            <AppCard key={a.id} a={a} intro={intros[a.id]} feedbackDone={fbDone[a.id]}
                      passReused={apps.some((b) => b.id !== a.id && b.pass_id === a.pass_id && b.created_at > a.created_at)} />
           ))}
           <ButtonLink href="/apply" tone="ghost">다른 회차 신청하기</ButtonLink>
@@ -105,7 +110,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   );
 }
 
-function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReused: boolean }) {
+function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: Intro[]; passReused: boolean; feedbackDone?: boolean }) {
   const slots = a.application_slots.map((s) => s.event_slots).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
   const assigned = slots.find((s) => s.id === a.assigned_slot_id);
   const m = MATCH_LABEL[a.match_status] ?? { label: a.match_status, tone: "muted" as const };
@@ -148,6 +153,9 @@ function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReu
             <p className="text-sm">📍 {a.table_members.dining_tables.venues.name}</p>
           )}
           <ButtonLink href={`/table/${a.table_members?.table_id}`}>단체방 · 식당 안내 보기</ButtonLink>
+          <p className="text-center text-xs text-[#8B6A66]">
+            피드백 {feedbackDone ? "✅ 제출 완료" : "아직 안 남겼어요 (모임 후 단체방 화면에서)"}
+          </p>
         </div>
       ) : (
         <div className="space-y-1 text-sm">

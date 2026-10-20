@@ -13,6 +13,8 @@ const SYSTEM_STYLE: Record<string, string> = {
   CURATION: "bg-[#F4E4DE]",
   TOPIC: "bg-[#EEF4EA]",
   REMINDER: "bg-[#FCEDE8]",
+  POLICY: "border border-[#E9DCD3] bg-white",
+  GAME: "bg-[#FFF6DD]",
 };
 
 // 이모티콘: 누르면 바로 "크게" 보내기 (카카오톡 이모티콘처럼), 입력 중이면 글에 끼워 넣기

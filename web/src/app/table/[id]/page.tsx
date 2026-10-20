@@ -8,7 +8,7 @@ import { ChatRoom, type Msg } from "./chat";
 
 type Info = {
   starts_at: string; region_code: string; venue_name: string | null; venue_address: string | null;
-  map_url: string | null; room_id: string | null; shared_interests: string[] | null;
+  map_url: string | null; room_id: string | null; shared_interests: string[] | null; price_range: string | null;
 };
 type Status = { attendance: string; checked_in_at: string | null; can_check_in: boolean; can_cancel: boolean;
   can_feedback: boolean; feedback_done: boolean; demo: boolean };
@@ -47,6 +47,10 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
             <>
               <p className="font-semibold">📍 {info.venue_name}</p>
               <p className="text-xs text-[#6A4A4C]">{info.venue_address}</p>
+              <p className="mt-1 text-xs text-[#6A4A4C]">
+                ⏰ {new Date(info.starts_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" })}까지 모여요 · 🪑 예약명 &ldquo;우연한 식탁&rdquo;
+                {info.price_range && <> · 💳 1인 {info.price_range} (각자 결제)</>}
+              </p>
               {mapLink && <a href={mapLink} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-[#7A1F2B] underline">지도에서 보기</a>}
             </>
           ) : (
@@ -64,6 +68,16 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
       </Card>
 
       {st && <StatusBar id={id} st={st} />}
+
+      <details className="mt-4 rounded-2xl bg-white px-5 py-4 shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
+        <summary className="cursor-pointer font-semibold">🎲 아이스브레이킹 게임</summary>
+        <ol className="mt-3 space-y-2 text-sm text-[#6A4A4C]">
+          <li><b className="text-[#2E1B1E]">동물 카드 맞히기</b> — 자기소개 전에 서로의 &ldquo;닮은 동물&rdquo;을 맞혀 보세요. 정답은 위 멤버 소개에 있어요.</li>
+          <li><b className="text-[#2E1B1E]">공통점 3개 찾기</b> — 테이블 모두에게 해당하는 공통점 3개를 먼저 찾으면 건배사 담당!</li>
+          <li><b className="text-[#2E1B1E]">두 개의 진실, 하나의 거짓</b> — 나에 대한 문장 3개 중 거짓 하나를 맞혀 보세요.</li>
+        </ol>
+        <p className="mt-2 text-xs text-[#8B6A66]">모임 시작 시각에 단체방에도 자동으로 올라가요.</p>
+      </details>
 
       <div className="mb-2 mt-6 flex items-center justify-between">
         <h2 className="font-semibold">단체방</h2>

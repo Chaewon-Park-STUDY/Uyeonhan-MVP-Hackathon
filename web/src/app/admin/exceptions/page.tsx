@@ -3,7 +3,7 @@ import { Badge, Card, inputCls } from "@/components/ui";
 import { PendingButton } from "@/components/pending";
 import { EXCEPTION_LABEL, requireAdmin } from "@/lib/admin";
 import { fmtDate } from "@/lib/labels";
-import { resolveException } from "../actions";
+import { resolveException, safetyAction } from "../actions";
 
 type Exc = { id: string; kind: string; reason: string; status: string; admin_note: string | null; created_at: string;
   resolved_at: string | null; table_id: string | null; application_id: string | null };
@@ -16,6 +16,11 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
   if (!all) q = q.eq("status", "OPEN");
   const { data } = await q;
   const list = (data ?? []) as Exc[];
+  const details: Record<string, { reporter: string; reported: string; reason: string }> = {};
+  await Promise.all(list.filter((e) => e.kind === "SAFETY").map(async (e) => {
+    const { data: d } = await supabase.rpc("admin_safety_detail", { p_exception: e.id }).maybeSingle<{ reporter: string; reported: string; reason: string }>();
+    if (d) details[e.id] = d;
+  }));
 
   return (
     <div className="space-y-3">
@@ -39,7 +44,27 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
           </div>
           <p className="mt-2 text-sm">{e.reason}</p>
           {e.admin_note && <p className="mt-1 text-xs text-[#2F6B3A]">메모: {e.admin_note}</p>}
-          {e.status === "OPEN" && (
+          {e.kind === "SAFETY" && details[e.id] && (
+            <p className="mt-2 rounded-lg bg-[#FCEDE8] px-3 py-2 text-sm">
+              신고한 사람 <b>{details[e.id].reporter}</b> → 신고된 사람 <b>{details[e.id].reported}</b><br />
+              <span className="text-[#6A4A4C]">&ldquo;{details[e.id].reason}&rdquo;</span>
+              <span className="mt-1 block text-xs text-[#8B6A66]">두 사람은 이미 자동으로 서로 같은 테이블에 배정되지 않아요. 신고 내용은 상대에게 공개되지 않아요.</span>
+            </p>
+          )}
+          {e.status === "OPEN" && e.kind === "SAFETY" && (
+            <form action={safetyAction} className="mt-3 space-y-2">
+              <input type="hidden" name="id" value={e.id} />
+              <input name="note" placeholder="확인 내용 메모 (선택)" className={`${inputCls} py-2 text-sm`} />
+              <div className="flex flex-wrap gap-2">
+                {[["WARNING", "경고"], ["RESTRICTED", "30일 참가 제한"], ["BANNED", "영구 제한"], ["DISMISSED", "조치 없음"]].map(([v, l]) => (
+                  <PendingButton key={v} name="action" value={v} className={`rounded-xl px-4 py-2 text-sm font-semibold ${v === "BANNED" ? "bg-[#A2412A] text-white" : v === "DISMISSED" ? "border border-[#E9DCD3] bg-white" : "bg-[#7A1F2B] text-white"}`}>
+                    {l}
+                  </PendingButton>
+                ))}
+              </div>
+            </form>
+          )}
+          {e.status === "OPEN" && e.kind !== "SAFETY" && (
             <form action={resolveException} className="mt-3 flex gap-2">
               <input type="hidden" name="id" value={e.id} />
               <input name="note" placeholder="처리 내용 (예: 대체 식당 수동 배정)" className={`${inputCls} py-2 text-sm`} />

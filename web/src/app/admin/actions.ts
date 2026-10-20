@@ -76,3 +76,13 @@ export async function saveSettings(formData: FormData) {
   revalidatePath("/admin/settings");
   redirect("/admin/settings?saved=1");
 }
+
+// 신고 조치 (PRD SAF-02): 경고 / 30일 참가 제한 / 영구 제한 / 조치 없음
+export async function safetyAction(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.rpc("admin_safety_action", {
+    p_exception: String(formData.get("id")), p_action: String(formData.get("action")), p_note: String(formData.get("note") ?? ""),
+  });
+  revalidatePath("/admin/exceptions");
+  revalidatePath("/admin");
+}

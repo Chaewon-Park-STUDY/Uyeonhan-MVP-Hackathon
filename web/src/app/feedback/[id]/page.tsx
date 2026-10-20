@@ -59,6 +59,10 @@ export default async function FeedbackPage({ params, searchParams }: {
           <Rating name="convo_score" />
           <Label>식당은 어땠나요?</Label>
           <Rating name="venue_score" />
+          <Label>우연한 식탁에 또 참여하고 싶나요?</Label>
+          <Rating name="revisit_intent" />
+          <Label>친구에게 추천하고 싶나요?</Label>
+          <Rating name="recommend_intent" />
         </Card>
 
         {others.length > 0 && (
