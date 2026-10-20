@@ -69,9 +69,9 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         <Card className="bg-[#FFF8F0]">
           <p className="text-xs font-semibold tracking-widest text-[#B9784A]">ANIMAL CARD</p>
           <Label hint="1~2장 골라 주세요. 같은 테이블 사람들에게 내 카드가 보여요">나와 닮은 동물은?</Label>
-          <AnimalCards name="self_traits" cards={ANIMALS} checked={p.self_traits ?? []} />
+          <AnimalCards name="self_traits" cards={ANIMALS} checked={p.self_traits ?? []} max={2} />
           <Label hint="1~3장 골라 주세요. 이 동물들과 같은 테이블이 되도록 매칭해요">함께하고 싶은 동물은?</Label>
-          <AnimalCards name="desired_traits" cards={[...ANIMALS, ...WANT_EXTRA]}
+          <AnimalCards name="desired_traits" cards={[...ANIMALS, ...WANT_EXTRA]} max={3}
                        checked={(p.desired_traits ?? []).map((v: string) => animalOf(v)?.value ?? v)} />
         </Card>
 
