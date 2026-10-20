@@ -1,9 +1,11 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
 @import url("https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css");
+@import url("https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css");
 @import "tailwindcss";
 
 @theme inline {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-brand: "MaruBuri", "Noto Serif KR", serif;   /* 로고 워드마크·초대장 제목: 공식 포스터와 같은 결의 현대 명조 */
   --font-serif: "NanumBarunGothic", "Pretendard Variable", Pretendard, sans-serif;   /* 제목·로고용 (이름은 serif지만 나눔바른고딕) */
 }
 
@@ -21,6 +23,10 @@ body {
   background: var(--cream);
   color: var(--ink);
   font-family: var(--font-sans);
+}
+
+.font-brand {
+  font-family: var(--font-brand);
 }
 
 h1, .font-serif {

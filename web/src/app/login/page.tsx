@@ -10,7 +10,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="mb-8 mt-4 text-center">
         <span className="inline-block"><WaxSeal size={64} /></span>
         <p className="mt-3 font-serif text-sm tracking-widest text-[#7A1F2B]">{signup ? "초대에 응하기" : "다시 오신 걸 환영해요"}</p>
-        <h1 className="mt-1 font-serif text-3xl font-extrabold text-[#7A1F2B]">우연한 식탁</h1>
+        <h1 className="mt-1 font-brand text-3xl font-bold text-[#7A1F2B]">우연한 식탁</h1>
         <DiamondRule className="mx-auto mt-3 w-40 text-[#C9A227]" />
         <p className="mt-3 text-[#6A4A4C]">처음 보는 사람들과 좋은 저녁 한 끼</p>
       </div>

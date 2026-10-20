@@ -1,6 +1,6 @@
 // 우연한 식탁 브랜드 (FAQ Q12: 로고 원본이 없어 공식 포스터를 참고해 재현)
 //   심볼: 포크 | 이중 테두리 접시 | 스푼 + 아래 월계수 가지
-//   워드마크: 나눔바른고딕 "우연한 식탁"
+//   워드마크: 마루부리 "우연한 식탁" (포스터와 같은 결의 현대 명조)
 
 export function BrandSymbol({ className = "h-8 w-12", color = "currentColor", laurel = true }: {
   className?: string; color?: string; laurel?: boolean;
@@ -28,7 +28,7 @@ export function BrandSymbol({ className = "h-8 w-12", color = "currentColor", la
 }
 
 export function Wordmark({ className = "text-lg" }: { className?: string }) {
-  return <span className={`font-serif font-extrabold tracking-tight ${className}`}>우연한 식탁</span>;
+  return <span className={`font-brand font-bold tracking-tight ${className}`}>우연한 식탁</span>;
 }
 
 // 왁스 실링 (초대장 봉투용): 골드 실링 + 버건디 심볼

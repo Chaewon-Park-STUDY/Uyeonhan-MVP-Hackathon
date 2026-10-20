@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#FBF7F0" };
 
 async function Header() {
-  const { supabase, user } = await getMe();
+  const { supabase, user, profile } = await getMe();
   const { count: unread } = user
     ? await supabase.from("notifications").select("id", { count: "exact", head: true })
         .not("sent_at", "is", null).is("read_at", null)
@@ -28,6 +28,7 @@ async function Header() {
         </Link>
         {user ? (
           <nav className="flex items-center gap-3 text-sm">
+            {profile?.role === "admin" && <Link href="/admin" className="font-semibold text-[#7A1F2B]">운영</Link>}
             <Link href="/apply">신청하기</Link>
             <Link href="/notifications" className="relative">
               알림

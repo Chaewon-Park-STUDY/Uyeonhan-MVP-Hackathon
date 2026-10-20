@@ -54,40 +54,41 @@ export function Invitation({ nextDate, regions }: { nextDate: string | null; reg
   }
 
   return (
-    <section className="bg-gradient-to-b from-[#7A1F2B] via-[#7A1F2B] to-[#FBF7F0] px-4 pb-8 pt-8">
-      <article className="animate-rise mx-auto max-w-sm rounded-[28px] border border-[#C9A227]/50 bg-[#FBF7F0] px-6 pb-8 pt-7 text-center shadow-2xl">
+    <section className="bg-gradient-to-b from-[#3A0D14] via-[#5E1520] to-[#FBF7F0] px-4 pb-10 pt-8">
+      {/* 공식 포스터처럼: 어두운 와인빛 바탕 + 크림 글씨 + 골드 장식 */}
+      <article className="animate-rise mx-auto max-w-sm rounded-[28px] border border-[#C9A227]/60 bg-gradient-to-b from-[#2E0B11] to-[#4A121C] px-6 pb-8 pt-7 text-center text-[#F3E9D8] shadow-2xl">
         <div className="rounded-[20px] border border-[#C9A227]/40 px-4 pb-6 pt-4">
-          <Arch className="mx-auto w-44 text-[#C9A227]" />
-          <p className="mt-1 flex items-center justify-center gap-2 font-serif text-sm text-[#7A1F2B]">
-            <span className="h-1 w-1 rotate-45 bg-[#C9A227]" />매주 목요일 저녁<span className="h-1 w-1 rotate-45 bg-[#C9A227]" />
+          <Arch className="mx-auto w-44 text-[#E6C56A]" />
+          <p className="mt-1 flex items-center justify-center gap-2 font-brand text-sm tracking-wider text-[#F3E9D8]/90">
+            <span className="h-1 w-1 rotate-45 bg-[#E6C56A]" />매주 목요일 저녁<span className="h-1 w-1 rotate-45 bg-[#E6C56A]" />
           </p>
-          <h1 className="mt-3 font-serif text-5xl font-extrabold leading-[1.15] text-[#7A1F2B]">우연한<br />식탁</h1>
-          <DiamondRule className="mx-6 mt-5 text-[#C9A227]" />
-          <p className="mt-4 font-serif text-lg leading-relaxed">처음 보는 사람들과<br />좋은 저녁 한 끼</p>
-          <TableIllustration className="mx-auto mt-4 w-56" />
+          <h1 className="mt-3 font-brand text-6xl font-bold leading-[1.12] tracking-tight text-[#F3E9D8]">우연한<br />식탁</h1>
+          <DiamondRule className="mx-6 mt-5 text-[#E6C56A]" />
+          <p className="mt-4 font-brand text-lg leading-relaxed tracking-wider">처음 보는 사람들과<br />좋은 저녁 한 끼</p>
+          <TableIllustration className="mx-auto mt-5 w-56" />
 
-          <div className="mt-5 rounded-xl bg-[#F4E4DE]/60 px-4 py-3 text-sm">
+          <div className="mt-5 rounded-xl border border-[#C9A227]/30 bg-white/5 px-4 py-3 text-sm">
             {nextDate ? (
               <>
-                <p className="text-[#6A4A4C]">당신의 자리를 마련해 두었어요</p>
-                <p className="mt-1 font-serif text-base font-bold text-[#7A1F2B]">{nextDate}</p>
+                <p className="text-[#F3E9D8]/80">당신의 자리를 마련해 두었어요</p>
+                <p className="mt-1 font-brand text-base font-bold text-[#E6C56A]">{nextDate}</p>
               </>
             ) : (
-              <p className="text-[#6A4A4C]">다음 식탁을 준비하고 있어요</p>
+              <p className="text-[#F3E9D8]/80">다음 식탁을 준비하고 있어요</p>
             )}
-            <p className="mt-1 text-xs text-[#8B6A66]">{regions.join(" · ")}</p>
+            <p className="mt-1 text-xs text-[#F3E9D8]/60">{regions.join(" · ")}</p>
           </div>
 
-          <p className="mt-4 text-xs leading-relaxed text-[#6A4A4C]">
-            나이·성비·MBTI·관심사와 <b>동물 카드</b>로<br />잘 맞는 4~6명을 한 식탁에 모셔요.
+          <p className="mt-4 text-xs leading-relaxed text-[#F3E9D8]/75">
+            나이·성비·MBTI·관심사와 <b className="text-[#F3E9D8]">동물 카드</b>로<br />잘 맞는 4~6명을 한 식탁에 모셔요.
           </p>
 
           <Link href="/login?mode=signup"
-                className="mt-6 block rounded-xl bg-[#7A1F2B] px-4 py-3.5 font-semibold text-[#FBF7F0] shadow-md hover:bg-[#5E1520]">
+                className="mt-6 block rounded-xl bg-[#E6C56A] px-4 py-3.5 font-semibold text-[#3A0D14] shadow-md hover:bg-[#F0D58A]">
             초대 수락하기
           </Link>
-          <Link href="/login" className="mt-3 inline-block text-sm text-[#8B6A66] underline">이미 초대받았어요 (로그인)</Link>
-          <p className="mt-6 font-serif text-xs tracking-wide text-[#8B6A66]">by Whatsup House</p>
+          <Link href="/login" className="mt-3 inline-block text-sm text-[#F3E9D8]/70 underline">이미 초대받았어요 (로그인)</Link>
+          <p className="mt-6 font-brand text-xs tracking-wide text-[#F3E9D8]/60">by Whatsup House</p>
         </div>
       </article>
     </section>

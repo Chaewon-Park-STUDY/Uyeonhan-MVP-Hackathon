@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // 매 요청마다 Supabase 세션을 갱신하고, 로그인이 필요한 화면은 /login으로 보낸다.
-const PROTECTED = ["/onboarding", "/profile", "/apply", "/pay", "/resolve", "/table", "/notifications", "/feedback"];
+const PROTECTED = ["/onboarding", "/profile", "/apply", "/pay", "/resolve", "/table", "/notifications", "/feedback", "/admin"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
