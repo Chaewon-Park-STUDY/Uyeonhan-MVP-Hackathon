@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { ButtonLink, Card, Page } from "@/components/ui";
 import { PendingButton } from "@/components/pending";
-import { REGION_LABEL, fmtDate } from "@/lib/labels";
+import { REGION_LABEL, animalOf, fmtDate } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 import { cancelSeat, checkIn, moreTopics } from "./actions";
 import { ChatRoom, type Msg } from "./chat";
@@ -12,7 +12,7 @@ type Info = {
 };
 type Status = { attendance: string; checked_in_at: string | null; can_check_in: boolean; can_cancel: boolean;
   can_feedback: boolean; feedback_done: boolean; demo: boolean };
-type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[]; is_me: boolean };
+type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[]; is_me: boolean; animals?: string[] | null };
 
 export default async function TablePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -56,7 +56,7 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
         <ul className="mt-3 grid grid-cols-2 gap-2 text-xs">
           {people.map((p, i) => (
             <li key={i} className={`rounded-xl border px-3 py-2 ${p.is_me ? "border-[#B9784A] bg-[#FFF8F0]" : "border-[#EFE4D6]"}`}>
-              <b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
+              <span className="mr-1">{(p.animals ?? []).map((v) => animalOf(v)?.emoji).join("")}</span><b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
               <p className="mt-0.5 truncate text-[#9A7B66]">{p.interests.slice(0, 2).join(", ")}</p>
             </li>
           ))}

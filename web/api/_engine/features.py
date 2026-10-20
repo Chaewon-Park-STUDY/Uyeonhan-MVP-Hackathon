@@ -72,6 +72,9 @@ def interest_score(members: list[Person]) -> float:
 
 
 def _desire_met(want: str, me: Person, other: Person) -> bool:
+    # 동물 카드(v2): "함께하고 싶은 동물" = 상대의 "나와 닮은 동물"과 같은 어휘 → 그대로 비교
+    if want in other.self_traits:
+        return True
     if want in DESIRED_MAP:
         return bool(DESIRED_MAP[want] & other.self_traits)
     sim = jaccard(me.profile_set, other.profile_set)

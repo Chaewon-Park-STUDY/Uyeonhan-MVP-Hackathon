@@ -33,8 +33,14 @@ export async function saveProfile(formData: FormData) {
   if (!/^[EI][SN][TF][JP]$/.test(payload.mbti)) {
     redirect(`/onboarding?error=${encodeURIComponent("MBTI 네 가지를 모두 골라 주세요.")}`);
   }
-  if (payload.interests.length === 0 || payload.desired_traits.length === 0) {
-    redirect(`/onboarding?error=${encodeURIComponent("관심사와 만나고 싶은 사람을 하나 이상 골라 주세요.")}`);
+  if (payload.interests.length === 0) {
+    redirect(`/onboarding?error=${encodeURIComponent("관심사를 하나 이상 골라 주세요.")}`);
+  }
+  if (payload.self_traits.length < 1 || payload.self_traits.length > 2) {
+    redirect(`/onboarding?error=${encodeURIComponent("나와 닮은 동물을 1~2장 골라 주세요.")}`);
+  }
+  if (payload.desired_traits.length < 1 || payload.desired_traits.length > 3) {
+    redirect(`/onboarding?error=${encodeURIComponent("함께하고 싶은 동물을 1~3장 골라 주세요.")}`);
   }
 
   const supabase = await createClient();

@@ -1,6 +1,6 @@
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
 import { ProfileSummary } from "@/components/profile-summary";
-import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, fmtDate, fmtDeadline, won } from "@/lib/labels";
+import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, animalOf, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 
 type SlotRow = { id: string; starts_at: string; region_code: string; apply_deadline: string };
@@ -17,7 +17,7 @@ type AppRow = {
   pass_id: string | null;
   table_members: { table_id: string; dining_tables: { explanation: { shared_interests?: string[] } | null; venues: { name: string } | null } | null } | null;
 };
-type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[]; is_me: boolean };
+type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[]; is_me: boolean; animals?: string[] | null };
 
 const RESOLVED_TEXT: Record<string, string> = {
   TRANSFERRED: "다른 회차로 옮겼어요. 새 회차 매칭을 기다려 주세요.",
@@ -123,7 +123,7 @@ function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReu
             <ul className="grid grid-cols-2 gap-2 text-xs">
               {intro.map((p, i) => (
                 <li key={i} className={`rounded-xl border px-3 py-2 ${p.is_me ? "border-[#B9784A] bg-[#FFF8F0]" : "border-[#EFE4D6]"}`}>
-                  <b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
+                  <span className="mr-1">{(p.animals ?? []).map((v) => animalOf(v)?.emoji).join("")}</span><b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
                   <p className="mt-0.5 truncate text-[#9A7B66]">{p.interests.slice(0, 2).join(", ")}</p>
                 </li>
               ))}
@@ -216,7 +216,7 @@ function Landing({ slots }: { slots: SlotRow[] }) {
       <h2 className="mb-3 mt-10 font-semibold">이렇게 진행돼요</h2>
       <ol className="space-y-2 text-sm text-[#7A5E4B]">
         <li>1. 프로필과 가능한 날짜·지역을 골라 신청해요.</li>
-        <li>2. 화요일 밤, 나이·성비·MBTI·관심사를 고려해 4~6명 테이블이 자동으로 만들어져요.</li>
+        <li>2. 화요일 밤, 나이·성비·MBTI·관심사와 <b>동물 카드</b>(나와 닮은 동물 · 함께하고 싶은 동물)를 고려해 4~6명 테이블이 자동으로 만들어져요.</li>
         <li>3. 식당과 단체방이 열리고, 목요일 저녁에 만나요.</li>
         <li>4. 식사 후 남긴 피드백이 다음 매칭을 더 정교하게 만들어요.</li>
       </ol>

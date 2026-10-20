@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ButtonLink, Card, Page } from "@/components/ui";
-import { FAIL_PREFS } from "@/lib/labels";
+import { FAIL_PREFS, animalOf } from "@/lib/labels";
+import { AnimalBadge } from "@/components/animal-cards";
 import { ProfileSummary } from "@/components/profile-summary";
 import { getMe } from "@/lib/supabase/server";
 
@@ -20,8 +21,14 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <ProfileSummary p={p} />
 
       <Card className="mt-4 space-y-4">
-        <Row title="나는 이런 사람" items={p.self_traits} />
-        <Row title="만나고 싶은 사람" items={p.desired_traits} />
+        <div>
+          <p className="mb-1.5 text-xs text-[#9A7B66]">나와 닮은 동물</p>
+          <div className="flex flex-wrap gap-1.5">{(p.self_traits ?? []).map((v: string) => <AnimalBadge key={v} card={animalOf(v)} />)}</div>
+        </div>
+        <div>
+          <p className="mb-1.5 text-xs text-[#9A7B66]">함께하고 싶은 동물</p>
+          <div className="flex flex-wrap gap-1.5">{(p.desired_traits ?? []).map((v: string) => <AnimalBadge key={v} card={animalOf(v)} />)}</div>
+        </div>
       </Card>
 
       <Card className="mt-4 space-y-4">

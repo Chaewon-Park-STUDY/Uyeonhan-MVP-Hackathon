@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Card, Chips, ErrorBox, Label, Page, Submit, inputCls } from "@/components/ui";
-import { ALLERGIES, BUDGETS, DESIRED, DISLIKES, FAIL_PREFS, INTERESTS, MBTI_AXES, SELF_TRAITS } from "@/lib/labels";
+import { ALLERGIES, ANIMALS, BUDGETS, DISLIKES, FAIL_PREFS, INTERESTS, MBTI_AXES, WANT_EXTRA, animalOf } from "@/lib/labels";
+import { AnimalCards } from "@/components/animal-cards";
 import { getMe } from "@/lib/supabase/server";
 import { saveProfile } from "./actions";
 
@@ -63,10 +64,15 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         <Card>
           <Label hint="하나 이상 골라 주세요 (여러 개 가능)">요즘 관심사</Label>
           <Chips name="interests" options={INTERESTS} checked={p.interests ?? []} />
-          <Label hint="선택">나는 어떤 사람인가요?</Label>
-          <Chips name="self_traits" options={SELF_TRAITS} checked={p.self_traits ?? []} />
-          <Label hint="하나 이상 골라 주세요 (여러 개 가능)">어떤 사람을 만나고 싶나요?</Label>
-          <Chips name="desired_traits" options={DESIRED} checked={p.desired_traits ?? []} />
+        </Card>
+
+        <Card className="bg-[#FFF8F0]">
+          <p className="text-xs font-semibold tracking-widest text-[#B9784A]">ANIMAL CARD</p>
+          <Label hint="1~2장 골라 주세요. 같은 테이블 사람들에게 내 카드가 보여요">나와 닮은 동물은?</Label>
+          <AnimalCards name="self_traits" cards={ANIMALS} checked={p.self_traits ?? []} />
+          <Label hint="1~3장 골라 주세요. 이 동물들과 같은 테이블이 되도록 매칭해요">함께하고 싶은 동물은?</Label>
+          <AnimalCards name="desired_traits" cards={[...ANIMALS, ...WANT_EXTRA]}
+                       checked={(p.desired_traits ?? []).map((v: string) => animalOf(v)?.value ?? v)} />
         </Card>
 
         <Card>

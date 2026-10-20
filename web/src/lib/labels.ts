@@ -6,6 +6,31 @@ export const SELF_TRAITS = ["경청을 잘 함", "깊은 대화를 좋아함", "
   "잔잔하고 조용한 편", "활기차고 에너지 있는 편", "이야기를 이끄는 편"];
 export const DESIRED = ["편하고 유머 있는 사람", "잔잔하고 안정적인 사람", "깊은 대화가 되는 사람",
   "나와 비슷한 사람", "나와 다른 자극을 주는 사람", "열정 있는 사람"];
+// 동물 카드: "나와 닮은 동물"과 "함께하고 싶은 동물"을 같은 카드로 고른다.
+// value 는 기존 성향 문장과 1:1 대응 (시드 데이터·매칭 엔진과 호환)
+export type AnimalCard = { value: string; emoji: string; name: string; desc: string };
+export const ANIMALS: AnimalCard[] = [
+  { value: "경청을 잘 함", emoji: "🐻", name: "잘 들어주는 곰", desc: "이야기를 끝까지 들어줘요" },
+  { value: "가볍고 유머 있는 대화를 좋아함", emoji: "🦦", name: "분위기 띄우는 수달", desc: "유머로 어색함을 풀어요" },
+  { value: "깊은 대화를 좋아함", emoji: "🦉", name: "깊이 생각하는 부엉이", desc: "진지한 이야기를 좋아해요" },
+  { value: "활기차고 에너지 있는 편", emoji: "🐶", name: "먼저 다가가는 강아지", desc: "활기차고 에너지가 넘쳐요" },
+  { value: "잔잔하고 조용한 편", emoji: "🐱", name: "곁에 있어 편한 고양이", desc: "잔잔하고 차분해요" },
+  { value: "이야기를 이끄는 편", emoji: "🦁", name: "대화를 이끄는 사자", desc: "자연스럽게 화제를 꺼내요" },
+];
+export const WANT_EXTRA: AnimalCard[] = [
+  { value: "나와 비슷한 사람", emoji: "🪞", name: "나를 닮은 친구", desc: "관심사·성향이 비슷한 사람" },
+  { value: "나와 다른 자극을 주는 사람", emoji: "🌈", name: "새로운 자극을 주는 친구", desc: "나와 결이 다른 사람" },
+];
+// 예전 "만나고 싶은 사람" 문장(시드 데이터) → 화면 표시용 동물
+const LEGACY_WANT: Record<string, string> = {
+  "편하고 유머 있는 사람": "가볍고 유머 있는 대화를 좋아함",
+  "잔잔하고 안정적인 사람": "잔잔하고 조용한 편",
+  "깊은 대화가 되는 사람": "깊은 대화를 좋아함",
+  "열정 있는 사람": "활기차고 에너지 있는 편",
+};
+export const animalOf = (v: string) =>
+  [...ANIMALS, ...WANT_EXTRA].find((a) => a.value === (LEGACY_WANT[v] ?? v));
+
 export const ALLERGIES = ["갑각류", "견과류", "유제품", "밀", "달걀"];
 export const DISLIKES = ["해산물", "날것", "내장류", "매운음식", "고수", "오이"];
 export const BUDGETS = ["10,000~20,000원", "20,000~30,000원", "30,000원 이상 (상관 없음)"];
