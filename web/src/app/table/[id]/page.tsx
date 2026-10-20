@@ -39,25 +39,25 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
   return (
     <Page back="/">
       <Card>
-        <p className="text-xs text-[#9A7B66]">나의 테이블</p>
+        <p className="text-xs text-[#8B6A66]">나의 테이블</p>
         <p className="mt-1 text-xl font-bold">{fmtDate(info.starts_at)}</p>
         <p className="mt-1 text-sm">{REGION_LABEL[info.region_code]} · 나 포함 {people.length}명</p>
-        <div className="mt-3 rounded-xl bg-[#FFF8F0] px-3 py-2.5 text-sm">
+        <div className="mt-3 rounded-xl bg-[#FBF1EC] px-3 py-2.5 text-sm">
           {info.venue_name ? (
             <>
               <p className="font-semibold">📍 {info.venue_name}</p>
-              <p className="text-xs text-[#7A5E4B]">{info.venue_address}</p>
-              {mapLink && <a href={mapLink} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-[#B9784A] underline">지도에서 보기</a>}
+              <p className="text-xs text-[#6A4A4C]">{info.venue_address}</p>
+              {mapLink && <a href={mapLink} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-[#7A1F2B] underline">지도에서 보기</a>}
             </>
           ) : (
-            <p className="text-[#7A5E4B]">식당은 운영자가 확인 중이에요. 정해지면 알려 드릴게요.</p>
+            <p className="text-[#6A4A4C]">식당은 운영자가 확인 중이에요. 정해지면 알려 드릴게요.</p>
           )}
         </div>
         <ul className="mt-3 grid grid-cols-2 gap-2 text-xs">
           {people.map((p, i) => (
-            <li key={i} className={`rounded-xl border px-3 py-2 ${p.is_me ? "border-[#B9784A] bg-[#FFF8F0]" : "border-[#EFE4D6]"}`}>
+            <li key={i} className={`rounded-xl border px-3 py-2 ${p.is_me ? "border-[#7A1F2B] bg-[#FBF1EC]" : "border-[#EFE3DC]"}`}>
               <span className="mr-1">{mainAnimal(p.animals)?.emoji}</span><b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
-              <p className="mt-0.5 truncate text-[#9A7B66]">{p.interests.slice(0, 2).join(", ")}</p>
+              <p className="mt-0.5 truncate text-[#8B6A66]">{p.interests.slice(0, 2).join(", ")}</p>
             </li>
           ))}
         </ul>
@@ -70,7 +70,7 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
         {info.room_id && topicCount < 4 && (
           <form action={moreTopics}>
             <input type="hidden" name="table_id" value={id} />
-            <PendingButton className="rounded-full border border-[#E8DCCD] bg-white px-3 py-1.5 text-xs" pendingText="고르는 중…">
+            <PendingButton className="rounded-full border border-[#E9DCD3] bg-white px-3 py-1.5 text-xs" pendingText="고르는 중…">
               💬 대화 주제 더 받기
             </PendingButton>
           </form>
@@ -80,7 +80,7 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
         <ChatRoom roomId={info.room_id} initial={(msgs ?? []) as Msg[]}
                   roster={(roster ?? []) as { profile_id: string; nickname: string; is_me: boolean }[]} />
       ) : (
-        <Card><p className="text-sm text-[#9A7B66]">단체방을 준비하고 있어요.</p></Card>
+        <Card><p className="text-sm text-[#8B6A66]">단체방을 준비하고 있어요.</p></Card>
       )}
     </Page>
   );
@@ -88,7 +88,7 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
 
 function StatusBar({ id, st }: { id: string; st: Status }) {
   if (st.attendance === "CANCELED_EARLY" || st.attendance === "CANCELED_LATE") {
-    return <Card className="mt-4"><p className="text-sm text-[#7A5E4B]">이번 모임은 취소했어요. 환불 규정에 따라 환불되지 않아요.</p></Card>;
+    return <Card className="mt-4"><p className="text-sm text-[#6A4A4C]">이번 모임은 취소했어요. 환불 규정에 따라 환불되지 않아요.</p></Card>;
   }
   if (st.attendance === "NO_SHOW") {
     return <Card className="mt-4"><p className="text-sm text-[#A2412A]">노쇼로 기록됐어요. 90일 안에 2회가 쌓이면 30일간 신청이 제한돼요.</p></Card>;
@@ -104,19 +104,19 @@ function StatusBar({ id, st }: { id: string; st: Status }) {
       ) : st.can_check_in && (
         <form action={checkIn}>
           <input type="hidden" name="table_id" value={id} />
-          <PendingButton className="w-full rounded-xl border border-[#B9784A] bg-white px-4 py-3 font-semibold text-[#B9784A]">
+          <PendingButton className="w-full rounded-xl border border-[#7A1F2B] bg-white px-4 py-3 font-semibold text-[#7A1F2B]">
             도착했어요 (체크인)
           </PendingButton>
         </form>
       )}
       {st.can_cancel && (
         <details className="rounded-xl bg-white px-4 py-3 text-sm">
-          <summary className="cursor-pointer text-[#9A7B66]">못 가게 됐나요?</summary>
+          <summary className="cursor-pointer text-[#8B6A66]">못 가게 됐나요?</summary>
           <form action={cancelSeat} className="mt-3 space-y-2">
             <input type="hidden" name="table_id" value={id} />
-            <p className="text-xs text-[#7A5E4B]">매칭이 확정된 뒤라 환불되지 않아요. 모임 당일 취소는 벌점 0.5점이 쌓여요. 미리 알려 주시면 남은 분들이 기다리지 않아요.</p>
+            <p className="text-xs text-[#6A4A4C]">매칭이 확정된 뒤라 환불되지 않아요. 모임 당일 취소는 벌점 0.5점이 쌓여요. 미리 알려 주시면 남은 분들이 기다리지 않아요.</p>
             <label className="flex items-center gap-2 text-xs">
-              <input type="checkbox" name="confirm" required className="accent-[#B9784A]" /> 위 내용을 확인했어요
+              <input type="checkbox" name="confirm" required className="accent-[#7A1F2B]" /> 위 내용을 확인했어요
             </label>
             <PendingButton className="w-full rounded-xl bg-[#A2412A] px-4 py-2.5 text-sm font-semibold text-white">참석 취소하기</PendingButton>
           </form>

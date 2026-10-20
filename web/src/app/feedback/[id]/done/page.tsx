@@ -26,19 +26,19 @@ export default async function FeedbackDone({ params }: { params: Promise<{ id: s
 
   return (
     <Page title="고마워요!">
-      <p className="-mt-3 mb-5 text-sm text-[#7A5E4B]">{profile?.name}님의 피드백은 다음 매칭을 더 정교하게 만드는 데 쓰여요.</p>
+      <p className="-mt-3 mb-5 text-sm text-[#6A4A4C]">{profile?.name}님의 피드백은 다음 매칭을 더 정교하게 만드는 데 쓰여요.</p>
       {coupon && (
-        <Card className="mb-4 border-2 border-dashed border-[#B9784A] text-center">
-          <p className="text-xs text-[#9A7B66]">재방문 쿠폰</p>
-          <p className="mt-1 text-3xl font-bold text-[#B9784A]">{Math.round(coupon.discount_rate * 100)}% 할인</p>
-          <p className="mt-1 text-xs text-[#9A7B66]">{fmtDate(coupon.expires_at).split(" ").slice(0, 3).join(" ")}까지 · 다음 신청 때 자동으로 보여요</p>
+        <Card className="mb-4 border-2 border-dashed border-[#7A1F2B] text-center">
+          <p className="text-xs text-[#8B6A66]">재방문 쿠폰</p>
+          <p className="mt-1 text-3xl font-bold text-[#7A1F2B]">{Math.round(coupon.discount_rate * 100)}% 할인</p>
+          <p className="mt-1 text-xs text-[#8B6A66]">{fmtDate(coupon.expires_at).split(" ").slice(0, 3).join(" ")}까지 · 다음 신청 때 자동으로 보여요</p>
         </Card>
       )}
       {next && (
         <Card className="mb-4">
-          <p className="text-xs text-[#9A7B66]">다음 우연한 식탁</p>
+          <p className="text-xs text-[#8B6A66]">다음 우연한 식탁</p>
           <p className="mt-1 font-bold">{fmtDate(next.starts_at)} · {REGION_LABEL[next.region_code]}</p>
-          <p className="mt-0.5 text-xs text-[#9A7B66]">신청 마감 {fmtDeadline(next.apply_deadline)}</p>
+          <p className="mt-0.5 text-xs text-[#8B6A66]">신청 마감 {fmtDeadline(next.apply_deadline)}</p>
           <div className="mt-3"><ButtonLink href="/apply">쿠폰 쓰고 신청하기</ButtonLink></div>
         </Card>
       )}

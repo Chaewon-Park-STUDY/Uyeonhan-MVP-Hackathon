@@ -35,18 +35,18 @@ export default async function FeedbackPage({ params, searchParams }: {
   if (!st.can_feedback) {
     return (
       <Page title="피드백" back={`/table/${id}`}>
-        <Card><p className="text-sm text-[#7A5E4B]">모임이 끝난 뒤에 남길 수 있어요. ({fmtDate(info.starts_at)})</p></Card>
+        <Card><p className="text-sm text-[#6A4A4C]">모임이 끝난 뒤에 남길 수 있어요. ({fmtDate(info.starts_at)})</p></Card>
       </Page>
     );
   }
 
   return (
     <Page title="오늘 식탁은 어땠나요?" back={`/table/${id}`}>
-      <p className="-mt-3 mb-5 text-sm text-[#7A5E4B]">
+      <p className="-mt-3 mb-5 text-sm text-[#6A4A4C]">
         {fmtDate(info.starts_at)} · {info.venue_name ?? REGION_LABEL[info.region_code]}
         <br />1분이면 끝나요. 남겨 주신 답은 다음 매칭을 더 잘 맞추는 데 쓰여요.
       </p>
-      {st.demo && <p className="mb-4 rounded-xl bg-[#F3E6D6] px-3 py-2 text-xs">시연 모드: 모임 전이라도 피드백을 남겨 볼 수 있어요.</p>}
+      {st.demo && <p className="mb-4 rounded-xl bg-[#F4E4DE] px-3 py-2 text-xs">시연 모드: 모임 전이라도 피드백을 남겨 볼 수 있어요.</p>}
       <ErrorBox message={error} />
 
       <form action={submitFeedback} className="space-y-4">
@@ -71,7 +71,7 @@ export default async function FeedbackPage({ params, searchParams }: {
                     {PEOPLE.map(([v, label]) => (
                       <label key={v} className="cursor-pointer">
                         <input type="radio" name={`p_${m.profile_id}`} value={v} defaultChecked={v === "NEUTRAL"} className="peer sr-only" />
-                        <span className="inline-block rounded-full border border-[#E8DCCD] bg-[#FFFDF9] px-3 py-1.5 text-xs peer-checked:border-[#B9784A] peer-checked:bg-[#B9784A] peer-checked:text-white">
+                        <span className="inline-block rounded-full border border-[#E9DCD3] bg-[#FFFCF9] px-3 py-1.5 text-xs peer-checked:border-[#7A1F2B] peer-checked:bg-[#7A1F2B] peer-checked:text-white">
                           {label}
                         </span>
                       </label>
@@ -80,7 +80,7 @@ export default async function FeedbackPage({ params, searchParams }: {
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-[#9A7B66]">
+            <p className="mt-3 text-xs text-[#8B6A66]">
               &ldquo;또 만나고 싶어요&rdquo;는 다음 매칭에 반영하고, &ldquo;다시는 안 만날래요&rdquo;를 고르면 앞으로 같은 테이블에 배정하지 않아요.
             </p>
           </Card>
@@ -99,7 +99,7 @@ export default async function FeedbackPage({ params, searchParams }: {
                   {others.map((m) => <option key={m.profile_id} value={m.profile_id}>{m.nickname}</option>)}
                 </select>
                 <textarea name="report_reason" rows={2} maxLength={500} placeholder="어떤 일이 있었는지 알려 주세요" className={inputCls} />
-                <p className="text-xs text-[#9A7B66]">신고하면 즉시 서로 같은 테이블에 배정되지 않고, 운영자가 확인 후 조치해요.</p>
+                <p className="text-xs text-[#8B6A66]">신고하면 즉시 서로 같은 테이블에 배정되지 않고, 운영자가 확인 후 조치해요.</p>
               </div>
             </details>
           )}
@@ -118,7 +118,7 @@ function Rating({ name, required }: { name: string; required?: boolean }) {
       {SCORES.map(([v, emoji, word]) => (
         <label key={v} className="cursor-pointer">
           <input type="radio" name={name} value={v} required={required} className="peer sr-only scroll-mt-32" />
-          <span className="flex flex-col items-center rounded-xl border border-[#E8DCCD] bg-[#FFFDF9] py-2 text-xs peer-checked:border-[#B9784A] peer-checked:bg-[#B9784A] peer-checked:text-white">
+          <span className="flex flex-col items-center rounded-xl border border-[#E9DCD3] bg-[#FFFCF9] py-2 text-xs peer-checked:border-[#7A1F2B] peer-checked:bg-[#7A1F2B] peer-checked:text-white">
             <span className="text-xl">{emoji}</span>{word}
           </span>
         </label>

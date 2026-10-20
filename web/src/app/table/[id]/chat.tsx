@@ -8,8 +8,8 @@ export type Msg = { id: number; sender_id: string | null; kind: string; content:
 type Member = { profile_id: string; nickname: string; is_me: boolean };
 
 const SYSTEM_STYLE: Record<string, string> = {
-  NOTICE: "bg-[#FFF8F0]",
-  CURATION: "bg-[#F3E6D6]",
+  NOTICE: "bg-[#FBF1EC]",
+  CURATION: "bg-[#F4E4DE]",
   TOPIC: "bg-[#EEF4EA]",
   REMINDER: "bg-[#FCEDE8]",
 };
@@ -96,7 +96,7 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
         {msgs.map((m) => {
           if (!m.sender_id) {
             return (
-              <p key={m.id} className={`whitespace-pre-line rounded-xl px-3 py-2.5 text-sm ${SYSTEM_STYLE[m.kind] ?? "bg-[#FFF8F0]"}`}>
+              <p key={m.id} className={`whitespace-pre-line rounded-xl px-3 py-2.5 text-sm ${SYSTEM_STYLE[m.kind] ?? "bg-[#FBF1EC]"}`}>
                 {m.content}
               </p>
             );
@@ -106,19 +106,19 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
           const big = !deleted && ONLY_EMOJI.test(m.content);
           return (
             <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-              {!mine && <span className="mb-0.5 text-[11px] text-[#9A7B66]">{names[m.sender_id] ?? "참가자"}</span>}
+              {!mine && <span className="mb-0.5 text-[11px] text-[#8B6A66]">{names[m.sender_id] ?? "참가자"}</span>}
               <div className="relative flex max-w-[80%] items-end gap-1">
                 {mine && !deleted && (
                   <button type="button" aria-label="메시지 메뉴"
                           onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === m.id ? null : m.id); }}
-                          className="px-1 text-xs text-[#B3A398]">⋯</button>
+                          className="px-1 text-xs text-[#B7A3A0]">⋯</button>
                 )}
                 {deleted ? (
-                  <p className="rounded-2xl border border-dashed border-[#E8DCCD] px-3 py-2 text-xs text-[#B3A398]">삭제된 메시지예요</p>
+                  <p className="rounded-2xl border border-dashed border-[#E9DCD3] px-3 py-2 text-xs text-[#B7A3A0]">삭제된 메시지예요</p>
                 ) : big ? (
                   <p className="text-4xl leading-tight">{m.content}</p>
                 ) : (
-                  <p className={`whitespace-pre-line break-words rounded-2xl px-3 py-2 text-sm ${mine ? "bg-[#B9784A] text-white" : "bg-white shadow-[0_1px_2px_rgba(74,52,38,0.08)]"}`}>
+                  <p className={`whitespace-pre-line break-words rounded-2xl px-3 py-2 text-sm ${mine ? "bg-[#7A1F2B] text-white" : "bg-white shadow-[0_1px_2px_rgba(74,52,38,0.08)]"}`}>
                     {m.content}
                   </p>
                 )}
@@ -128,7 +128,7 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
                   </div>
                 )}
               </div>
-              <span className="mt-0.5 text-[10px] text-[#B3A398]">
+              <span className="mt-0.5 text-[10px] text-[#B7A3A0]">
                 {new Date(m.created_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
@@ -137,24 +137,24 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
         <div ref={bottom} />
       </div>
 
-      <div className="sticky bottom-0 mt-4 bg-[#FBF6EE] py-3">
+      <div className="sticky bottom-0 mt-4 bg-[#FBF7F0] py-3">
         {picker && (
           <div className="mb-2 grid grid-cols-8 gap-1 rounded-xl bg-white p-2 shadow-[0_1px_3px_rgba(74,52,38,0.12)]">
             {EMOJIS.map((e) => (
-              <button key={e} type="button" onClick={() => pickEmoji(e)} className="rounded-lg py-1.5 text-2xl hover:bg-[#FFF8F0]">{e}</button>
+              <button key={e} type="button" onClick={() => pickEmoji(e)} className="rounded-lg py-1.5 text-2xl hover:bg-[#FBF1EC]">{e}</button>
             ))}
-            <p className="col-span-8 px-1 pt-1 text-[11px] text-[#B3A398]">빈 칸에서 누르면 크게 보내지고, 글을 쓰는 중이면 글에 들어가요.</p>
+            <p className="col-span-8 px-1 pt-1 text-[11px] text-[#B7A3A0]">빈 칸에서 누르면 크게 보내지고, 글을 쓰는 중이면 글에 들어가요.</p>
           </div>
         )}
         <form onSubmit={send} className="flex gap-2">
           <button type="button" aria-label="이모티콘" onClick={() => setPicker((v) => !v)}
-                  className={`rounded-xl border px-3 text-xl ${picker ? "border-[#B9784A] bg-[#FFF8F0]" : "border-[#E8DCCD] bg-white"}`}>
+                  className={`rounded-xl border px-3 text-xl ${picker ? "border-[#7A1F2B] bg-[#FBF1EC]" : "border-[#E9DCD3] bg-white"}`}>
             😊
           </button>
           <input autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} placeholder="메시지 보내기"
-                 className="min-w-0 flex-1 rounded-xl border border-[#E8DCCD] bg-white px-4 py-3 outline-none focus:border-[#B9784A]" />
+                 className="min-w-0 flex-1 rounded-xl border border-[#E9DCD3] bg-white px-4 py-3 outline-none focus:border-[#7A1F2B]" />
           <button disabled={sending || !text.trim()}
-                  className="rounded-xl bg-[#B9784A] px-4 font-semibold text-white disabled:opacity-50">
+                  className="rounded-xl bg-[#7A1F2B] px-4 font-semibold text-white disabled:opacity-50">
             {sending ? "…" : "보내기"}
           </button>
         </form>

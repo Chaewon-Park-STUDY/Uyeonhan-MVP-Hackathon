@@ -1,14 +1,42 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap");
 @import "tailwindcss";
 
 @theme inline {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-serif: "Nanum Myeongjo", "Noto Serif KR", "AppleMyungjo", serif;
 }
 
-/* 밝고 따뜻한 베이지 톤 (DESIGN.md 디자인 방향) */
+/* 브랜드: 버건디 & 크림 & 골드 — 공식 포스터의 명조 워드마크·아치·마름모 장식을 초대장 콘셉트로 */
+:root {
+  --burgundy: #7a1f2b;
+  --burgundy-dark: #5e1520;
+  --cream: #fbf7f0;
+  --gold: #c9a227;
+  --ink: #2e1b1e;
+}
+
 html,
 body {
-  background: #fbf6ee;
-  color: #4a3426;
+  background: var(--cream);
+  color: var(--ink);
   font-family: var(--font-sans);
+}
+
+h1, .font-serif {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+/* 초대장 오프닝 애니메이션 */
+@keyframes flap-open { from { transform: rotateX(0deg); } to { transform: rotateX(180deg); } }
+@keyframes card-rise { from { transform: translateY(40%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes seal-pop { 0% { transform: scale(1); } 50% { transform: scale(1.12); } 100% { transform: scale(0); opacity: 0; } }
+@keyframes shimmer { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.animate-flap { animation: flap-open .7s ease-in forwards; transform-origin: top; }
+.animate-rise { animation: card-rise .8s .45s cubic-bezier(.2,.8,.2,1) both; }
+.animate-seal { animation: seal-pop .45s ease-in forwards; }
+.animate-shimmer { animation: shimmer 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-flap, .animate-rise, .animate-seal, .animate-shimmer { animation-duration: 1ms; animation-delay: 0ms; }
 }

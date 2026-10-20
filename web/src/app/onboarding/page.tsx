@@ -13,8 +13,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
   const thisYear = new Date().getFullYear();
 
   return (
-    <Page title={profile ? "프로필 수정" : "나를 소개해 주세요"} back={profile ? "/profile" : undefined}>
-      <p className="-mt-3 mb-5 text-sm text-[#7A5E4B]">
+    <Page title={profile ? "프로필 수정" : "내 자리 카드 만들기"} back={profile ? "/profile" : undefined}>
+      <p className="-mt-3 mb-5 text-sm text-[#6A4A4C]">
         잘 맞는 테이블을 만드는 데만 쓰여요. 다른 참가자에게는 연락처·출생연도가 공개되지 않아요.
       </p>
       <ErrorBox message={error} />
@@ -43,13 +43,13 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
           <div className="space-y-3">
             {MBTI_AXES.map((axis, i) => (
               <div key={axis.name}>
-                <p className="mb-1.5 text-xs text-[#9A7B66]">{axis.title}</p>
+                <p className="mb-1.5 text-xs text-[#8B6A66]">{axis.title}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {axis.options.map(([letter, word, desc]) => (
                     <label key={letter} className="cursor-pointer">
                       <input type="radio" name={axis.name} value={letter} required
                              defaultChecked={(p.mbti ?? "")[i] === letter} className="peer sr-only" />
-                      <span className="block h-full rounded-xl border border-[#E8DCCD] bg-[#FFFDF9] px-3 py-2.5 peer-checked:border-[#B9784A] peer-checked:bg-[#B9784A] peer-checked:text-white">
+                      <span className="block h-full rounded-xl border border-[#E9DCD3] bg-[#FFFCF9] px-3 py-2.5 peer-checked:border-[#7A1F2B] peer-checked:bg-[#7A1F2B] peer-checked:text-white">
                         <b>{letter}</b> <span className="text-sm">{word}</span>
                         <span className="mt-0.5 block text-[11px] opacity-75">{desc}</span>
                       </span>
@@ -66,8 +66,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
           <Chips name="interests" options={INTERESTS} checked={p.interests ?? []} />
         </Card>
 
-        <Card className="bg-[#FFF8F0]">
-          <p className="text-xs font-semibold tracking-widest text-[#B9784A]">ANIMAL CARD</p>
+        <Card className="bg-[#FBF1EC]">
+          <p className="text-xs font-semibold tracking-widest text-[#7A1F2B]">ANIMAL CARD</p>
           <Label hint="1~2장 골라 주세요. 같은 테이블 사람들에게 내 카드가 보여요">나와 닮은 동물은?</Label>
           <AnimalCards name="self_traits" cards={ANIMALS} checked={p.self_traits ?? []} max={2} />
           <Label hint="1~3장 골라 주세요. 이 동물들과 같은 테이블이 되도록 매칭해요">함께하고 싶은 동물은?</Label>
@@ -92,7 +92,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
             {FAIL_PREFS.map((f) => (
               <label key={f.value} className="flex items-center gap-2 text-sm">
                 <input type="radio" name="default_fail_pref" value={f.value}
-                       defaultChecked={(p.default_fail_pref ?? "MOVE_DATE") === f.value} className="accent-[#B9784A]" />
+                       defaultChecked={(p.default_fail_pref ?? "MOVE_DATE") === f.value} className="accent-[#7A1F2B]" />
                 {f.label}
               </label>
             ))}
@@ -100,7 +100,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         </Card>
 
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="privacy" required defaultChecked={!!p.privacy_agreed_at} className="mt-1 accent-[#B9784A]" />
+          <input type="checkbox" name="privacy" required defaultChecked={!!p.privacy_agreed_at} className="mt-1 accent-[#7A1F2B]" />
           <span>개인정보 수집·이용과 운영 정책(환불·노쇼 규정)에 동의해요. 매칭이 확정되면 같은 테이블 참가자와 앱 단체방에서 대화할 수 있어요.</span>
         </label>
         <Submit>{profile ? "저장하기" : "저장하고 신청하러 가기"}</Submit>

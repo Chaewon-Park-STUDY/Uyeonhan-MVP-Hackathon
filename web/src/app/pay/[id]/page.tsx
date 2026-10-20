@@ -30,11 +30,11 @@ export default async function PayPage({ params, searchParams }: {
       <ErrorBox message={error} />
       <Card className="space-y-3">
         <div className="flex justify-between text-sm">
-          <span className="text-[#9A7B66]">이용권</span>
+          <span className="text-[#8B6A66]">이용권</span>
           <span className="font-semibold">{pass?.label}</span>
         </div>
         <div className="text-sm">
-          <p className="mb-1 text-[#9A7B66]">신청한 회차 (이 중 한 곳으로 매칭돼요)</p>
+          <p className="mb-1 text-[#8B6A66]">신청한 회차 (이 중 한 곳으로 매칭돼요)</p>
           <ul className="space-y-1">
             {slots.map((s, i) => (
               <li key={i}>· {fmtDate(s.starts_at)} {REGION_LABEL[s.region_code]}</li>
@@ -43,19 +43,19 @@ export default async function PayPage({ params, searchParams }: {
         </div>
         {payment?.discount_amount > 0 && (
           <div className="flex justify-between text-sm">
-            <span className="text-[#9A7B66]">쿠폰 할인</span>
+            <span className="text-[#8B6A66]">쿠폰 할인</span>
             <span>-{won(payment.discount_amount)}</span>
           </div>
         )}
-        <div className="flex justify-between border-t border-[#EFE4D6] pt-3 text-lg font-bold">
+        <div className="flex justify-between border-t border-[#EFE3DC] pt-3 text-lg font-bold">
           <span>결제 금액</span>
           <span>{won(payment?.amount ?? 0)}</span>
         </div>
       </Card>
 
-      <Card className="mt-4 bg-[#FFF8F0]">
+      <Card className="mt-4 bg-[#FBF1EC]">
         <p className="mb-2 text-sm font-semibold">결제 전에 확인해 주세요</p>
-        <ul className="list-disc space-y-1 pl-5 text-xs text-[#7A5E4B]">
+        <ul className="list-disc space-y-1 pl-5 text-xs text-[#6A4A4C]">
           {REFUND_POLICY.map((r) => <li key={r}>{r}</li>)}
         </ul>
       </Card>
@@ -63,7 +63,7 @@ export default async function PayPage({ params, searchParams }: {
       <form action={pay} className="mt-5">
         <input type="hidden" name="id" value={id} />
         <Submit>{won(payment?.amount ?? 0)} 결제하기</Submit>
-        <p className="mt-2 text-center text-xs text-[#B3A398]">해커톤 시연용 모의 결제예요. 실제로 돈이 나가지 않아요.</p>
+        <p className="mt-2 text-center text-xs text-[#B7A3A0]">해커톤 시연용 모의 결제예요. 실제로 돈이 나가지 않아요.</p>
       </form>
     </Page>
   );

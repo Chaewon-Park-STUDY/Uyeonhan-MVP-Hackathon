@@ -1,4 +1,5 @@
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
+import { Invitation } from "@/components/invitation";
 import { ProfileSummary } from "@/components/profile-summary";
 import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, mainAnimal, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
@@ -35,7 +36,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     return (
       <Page title="반가워요!">
         <Card>
-          <p className="mb-4 text-sm text-[#7A5E4B]">잘 맞는 테이블을 만들기 위해 간단한 프로필이 필요해요. 3분이면 끝나요.</p>
+          <p className="mb-4 text-sm text-[#6A4A4C]">잘 맞는 테이블을 만들기 위해 간단한 프로필이 필요해요. 3분이면 끝나요.</p>
           <ButtonLink href="/onboarding">프로필 작성하기</ButtonLink>
         </Card>
       </Page>
@@ -64,7 +65,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
   return (
     <Page>
-      <p className="text-sm text-[#9A7B66]">{profile.name}님,</p>
+      <p className="text-sm text-[#8B6A66]">{profile.name}님,</p>
       <h1 className="mb-5 text-2xl font-bold">나의 우연한 식탁</h1>
 
       <div className="mb-4"><ProfileSummary p={profile} editHref="/profile" /></div>
@@ -74,7 +75,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
       {apps.length === 0 ? (
         <Card>
-          <p className="mb-4 text-sm text-[#7A5E4B]">아직 신청한 식탁이 없어요.</p>
+          <p className="mb-4 text-sm text-[#6A4A4C]">아직 신청한 식탁이 없어요.</p>
           <ButtonLink href="/apply">참가 신청하기</ButtonLink>
         </Card>
       ) : (
@@ -104,7 +105,7 @@ function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReu
     <Card>
       <div className="flex items-center justify-between">
         <Badge tone={m.tone}>{m.label}</Badge>
-        <span className="text-xs text-[#9A7B66]">{payment?.method === "KEPT_PASS" && a.payment_status === "PAID" ? "보관 이용권 사용"
+        <span className="text-xs text-[#8B6A66]">{payment?.method === "KEPT_PASS" && a.payment_status === "PAID" ? "보관 이용권 사용"
             : payment?.method === "MEMBERSHIP" && a.payment_status === "PAID" ? "멤버십"
             : PAYMENT_LABEL[a.payment_status] ?? a.payment_status}</span>
       </div>
@@ -115,16 +116,16 @@ function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReu
           <p className="text-lg font-bold">{fmtDate(assigned.starts_at)}</p>
           <p className="text-sm">{REGION_LABEL[assigned.region_code]} · 나 포함 {intro?.length ?? 0}명이 함께해요</p>
           {shared.length > 0 && (
-            <p className="rounded-xl bg-[#FFF8F0] px-3 py-2 text-sm">
+            <p className="rounded-xl bg-[#FBF1EC] px-3 py-2 text-sm">
               함께 나눌 이야기: <b>{shared.join(", ")}</b>
             </p>
           )}
           {intro && intro.length > 0 && (
             <ul className="grid grid-cols-2 gap-2 text-xs">
               {intro.map((p, i) => (
-                <li key={i} className={`rounded-xl border px-3 py-2 ${p.is_me ? "border-[#B9784A] bg-[#FFF8F0]" : "border-[#EFE4D6]"}`}>
+                <li key={i} className={`rounded-xl border px-3 py-2 ${p.is_me ? "border-[#7A1F2B] bg-[#FBF1EC]" : "border-[#EFE3DC]"}`}>
                   <span className="mr-1">{mainAnimal(p.animals)?.emoji}</span><b>{p.is_me ? "나" : p.nickname}</b> · {p.age_band}{p.mbti ? ` · ${p.mbti}` : ""}
-                  <p className="mt-0.5 truncate text-[#9A7B66]">{p.interests.slice(0, 2).join(", ")}</p>
+                  <p className="mt-0.5 truncate text-[#8B6A66]">{p.interests.slice(0, 2).join(", ")}</p>
                 </li>
               ))}
             </ul>
@@ -136,7 +137,7 @@ function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReu
         </div>
       ) : (
         <div className="space-y-1 text-sm">
-          <p className="text-[#9A7B66]">신청한 회차</p>
+          <p className="text-[#8B6A66]">신청한 회차</p>
           {slots.map((s) => (
             <p key={s.id}>· {fmtDate(s.starts_at)} {REGION_LABEL[s.region_code]}</p>
           ))}
@@ -144,12 +145,12 @@ function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReu
       )}
 
       {a.match_status === "WAITING" && a.payment_status === "PAID" && announce && (
-        <p className="mt-3 rounded-xl bg-[#F3E6D6] px-3 py-2 text-xs">
+        <p className="mt-3 rounded-xl bg-[#F4E4DE] px-3 py-2 text-xs">
           {fmtDeadline(announce)}에 자동으로 매칭돼요. 조건에 맞는 4~6명을 찾고 있어요.
         </p>
       )}
       {a.match_resolutions?.choice === "MOVE_DATE" || a.match_resolutions?.choice === "MOVE_REGION" ? (
-        <p className="mt-3 text-xs text-[#9A7B66]">지난 회차에서 매칭되지 않아 원하신 대로 이 회차로 옮겼어요.</p>
+        <p className="mt-3 text-xs text-[#8B6A66]">지난 회차에서 매칭되지 않아 원하신 대로 이 회차로 옮겼어요.</p>
       ) : null}
 
       {a.payment_status === "PENDING" && (
@@ -159,14 +160,14 @@ function AppCard({ a, intro, passReused }: { a: AppRow; intro?: Intro[]; passReu
         <div className="mt-4"><ButtonLink href={`/resolve/${a.id}`}>다른 일정 고르기</ButtonLink></div>
       )}
       {a.match_status === "NO_MATCH" && a.match_resolutions?.choice === "KEEP_PASS" && (
-        <p className="mt-3 rounded-xl bg-[#F3E6D6] px-3 py-2 text-xs">
+        <p className="mt-3 rounded-xl bg-[#F4E4DE] px-3 py-2 text-xs">
           이번엔 매칭되지 않아 <b>이용권을 보관했어요.</b>{" "}
           {a.passes?.type !== "SINGLE" ? "멤버십 기간이 7일 연장됐어요."
             : passReused ? "보관한 이용권은 다음 신청에 사용했어요." : "다음에 신청하면 결제 없이 바로 사용돼요."}
         </p>
       )}
       {a.payment_status === "REFUNDED" && payment?.refund_amount != null && (
-        <p className="mt-3 text-xs text-[#9A7B66]">{won(payment.refund_amount)} 환불 완료</p>
+        <p className="mt-3 text-xs text-[#8B6A66]">{won(payment.refund_amount)} 환불 완료</p>
       )}
     </Card>
   );
@@ -189,37 +190,40 @@ async function openSlots(supabase: Awaited<ReturnType<typeof getMe>>["supabase"]
 
 function Landing({ slots }: { slots: SlotRow[] }) {
   const dates = [...new Set(slots.map((s) => s.starts_at))];
+  const regions = [...new Set(slots.map((s) => REGION_LABEL[s.region_code]))];
   return (
-    <Page>
-      <section className="mb-8 mt-6">
-        <p className="text-sm tracking-widest text-[#B9784A]">매주 목요일 저녁</p>
-        <h1 className="mt-1 text-4xl font-bold leading-tight">우연한 식탁</h1>
-        <p className="mt-3 text-[#7A5E4B]">
-          처음 보는 사람들과 좋은 저녁 한 끼.<br />성향이 맞는 4~6명을 한 식탁으로 연결해 드려요.
-        </p>
-      </section>
-      <ButtonLink href="/login?mode=signup">신청하러 가기</ButtonLink>
+    <>
+      <Invitation nextDate={dates[0] ? fmtDate(dates[0]) : null}
+                  regions={regions.length ? regions : ["홍대/합정", "강남/신논현", "을지로/종로", "잠실"]} />
+      <Page>
+        <h2 className="mb-3 mt-2 font-serif text-lg font-bold text-[#7A1F2B]">모집 중인 식탁</h2>
+        <div className="space-y-2">
+          {dates.length === 0 && <p className="text-sm text-[#8B6A66]">지금 모집 중인 회차가 없어요.</p>}
+          {dates.map((d) => (
+            <Card key={d} className="py-4">
+              <p className="font-semibold">{fmtDate(d)}</p>
+              <p className="mt-1 text-sm text-[#6A4A4C]">
+                {slots.filter((s) => s.starts_at === d).map((s) => REGION_LABEL[s.region_code]).join(" · ")}
+              </p>
+            </Card>
+          ))}
+        </div>
 
-      <h2 className="mb-3 mt-10 font-semibold">모집 중인 회차</h2>
-      <div className="space-y-2">
-        {dates.length === 0 && <p className="text-sm text-[#9A7B66]">지금 모집 중인 회차가 없어요.</p>}
-        {dates.map((d) => (
-          <Card key={d} className="py-4">
-            <p className="font-semibold">{fmtDate(d)}</p>
-            <p className="mt-1 text-sm text-[#7A5E4B]">
-              {slots.filter((s) => s.starts_at === d).map((s) => REGION_LABEL[s.region_code]).join(" · ")}
-            </p>
-          </Card>
-        ))}
-      </div>
-
-      <h2 className="mb-3 mt-10 font-semibold">이렇게 진행돼요</h2>
-      <ol className="space-y-2 text-sm text-[#7A5E4B]">
-        <li>1. 프로필과 가능한 날짜·지역을 골라 신청해요.</li>
-        <li>2. 화요일 밤, 나이·성비·MBTI·관심사와 <b>동물 카드</b>(나와 닮은 동물 · 함께하고 싶은 동물)를 고려해 4~6명 테이블이 자동으로 만들어져요.</li>
-        <li>3. 식당과 단체방이 열리고, 목요일 저녁에 만나요.</li>
-        <li>4. 식사 후 남긴 피드백이 다음 매칭을 더 정교하게 만들어요.</li>
-      </ol>
-    </Page>
+        <h2 className="mb-3 mt-10 font-serif text-lg font-bold text-[#7A1F2B]">이렇게 진행돼요</h2>
+        <ol className="space-y-3 text-sm text-[#6A4A4C]">
+          {[
+            ["초대 수락", "프로필과 나를 닮은 동물 카드를 만들고, 가능한 날짜·지역을 골라 신청해요."],
+            ["좌석 배치", "화요일 밤, 나이·성비·MBTI·관심사와 동물 카드를 고려해 4~6명 테이블이 자동으로 만들어져요."],
+            ["저녁 식탁", "식당과 단체방이 열리고, 목요일 저녁에 만나요."],
+            ["다음 초대", "식사 후 남긴 피드백이 다음 매칭을 더 정교하게 만들어요."],
+          ].map(([t, d], i) => (
+            <li key={t} className="flex gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#C9A227] font-serif text-sm text-[#7A1F2B]">{i + 1}</span>
+              <span><b className="text-[#2E1B1E]">{t}</b><br />{d}</span>
+            </li>
+          ))}
+        </ol>
+      </Page>
+    </>
   );
 }
