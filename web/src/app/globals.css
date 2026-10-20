@@ -1,13 +1,13 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
-@import url("https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap");
+@import url("https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css");
 @import "tailwindcss";
 
 @theme inline {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  --font-serif: "Nanum Myeongjo", "Noto Serif KR", "AppleMyungjo", serif;
+  --font-serif: "NanumBarunGothic", "Pretendard Variable", Pretendard, sans-serif;   /* 제목·로고용 (이름은 serif지만 나눔바른고딕) */
 }
 
-/* 브랜드: 버건디 & 크림 & 골드 — 공식 포스터의 명조 워드마크·아치·마름모 장식을 초대장 콘셉트로 */
+/* 브랜드: 버건디 & 크림 & 골드 — 공식 포스터의 아치·마름모 장식을 초대장 콘셉트로, 제목은 나눔바른고딕 */
 :root {
   --burgundy: #7a1f2b;
   --burgundy-dark: #5e1520;

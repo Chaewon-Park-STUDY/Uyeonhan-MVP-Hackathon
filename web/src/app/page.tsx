@@ -1,4 +1,5 @@
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
+import { DiamondRule, WaxSeal } from "@/components/brand";
 import { Invitation } from "@/components/invitation";
 import { ProfileSummary } from "@/components/profile-summary";
 import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, mainAnimal, fmtDate, fmtDeadline, won } from "@/lib/labels";
@@ -34,11 +35,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   if (!user) return <Landing slots={await openSlots(supabase)} />;
   if (!profile) {
     return (
-      <Page title="반가워요!">
-        <Card>
-          <p className="mb-4 text-sm text-[#6A4A4C]">잘 맞는 테이블을 만들기 위해 간단한 프로필이 필요해요. 3분이면 끝나요.</p>
-          <ButtonLink href="/onboarding">프로필 작성하기</ButtonLink>
-        </Card>
+      <Page>
+        <section className="mt-4 rounded-[28px] border border-[#C9A227]/50 bg-white px-6 pb-7 pt-6 text-center shadow-[0_8px_30px_rgba(122,31,43,0.08)]">
+          <span className="inline-block"><WaxSeal size={60} /></span>
+          <p className="mt-3 font-serif text-sm tracking-widest text-[#7A1F2B]">초대를 수락해 주셔서 고마워요</p>
+          <h1 className="mt-2 font-serif text-2xl font-extrabold text-[#7A1F2B]">이제 당신의 자리 카드를<br />만들어 볼까요?</h1>
+          <DiamondRule className="mx-8 mt-4 text-[#C9A227]" />
+          <ol className="mx-auto mt-4 max-w-[260px] space-y-1.5 text-left text-sm text-[#6A4A4C]">
+            <li>① 기본 정보와 MBTI</li>
+            <li>② 요즘 관심사</li>
+            <li>③ 나와 닮은 동물 · 함께하고 싶은 동물</li>
+            <li>④ 알레르기 · 덜 좋아하는 음식</li>
+          </ol>
+          <p className="mt-4 text-xs text-[#8B6A66]">3분이면 끝나요. 같은 테이블 사람들에게는 이름 첫 글자와 동물 카드 정도만 보여요.</p>
+          <div className="mt-5"><ButtonLink href="/onboarding">자리 카드 만들기</ButtonLink></div>
+        </section>
       </Page>
     );
   }
