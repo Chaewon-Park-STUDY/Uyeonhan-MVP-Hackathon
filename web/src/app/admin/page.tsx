@@ -6,6 +6,7 @@ import { fmtDate } from "@/lib/labels";
 import { runLearn, runMatch } from "./actions";
 import { RegionMap } from "./region-map";
 import { Schedule } from "./schedule";
+import { Metrics } from "./metrics";
 
 type Row = { run_date: string; slots: number; open_slots: number; apps_total: number; apps_paid: number; apps_pending: number;
   confirmed_tables: number; confirmed_people: number; offered: number; matched_at: string | null; match_run_at: string; deadline: string };
@@ -92,6 +93,9 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           </div>
         </section>
       )}
+
+      {/* OT 핵심 지표 12개: 획득·전환 / 매칭 품질 / 반복 참여 / 운영 효율 */}
+      <Metrics supabase={supabase} />
 
       {/* 회차별 현황 + 매칭 실행 */}
       <Card>
