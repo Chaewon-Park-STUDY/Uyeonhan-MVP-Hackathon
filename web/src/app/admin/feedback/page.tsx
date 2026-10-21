@@ -80,7 +80,7 @@ export default async function Feedback() {
                   {q.profiles && <GenderTag gender={q.profiles.gender} birthYear={q.profiles.birth_year} />}
                   <span className="ml-2 text-xs text-[#8B6A66]">{q.profiles?.phone ?? ""} · {shortDt(q.created_at)}</span>
                 </p>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-[#2E1B1E]">{q.body}</p>
+                {q.body !== "(파일만 보냄)" && <p className="mt-1 whitespace-pre-wrap text-sm text-[#2E1B1E]">{q.body}</p>}
                 {q.file_path && (urlOf.get(q.file_path)
                   ? <a href={urlOf.get(q.file_path)!} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm font-semibold text-[#7A1F2B] underline">📎 {q.file_name ?? "첨부 파일"} 열기</a>
                   : <span className="mt-1 inline-block text-xs text-[#8B6A66]">📎 첨부 파일을 열 수 없어요</span>)}
