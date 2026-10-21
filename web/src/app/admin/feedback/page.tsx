@@ -3,6 +3,8 @@ import { AdminTitle, Pill, Stat, TableWrap, kstDate, shortDt, td, th } from "@/c
 import { GenderTag } from "@/components/admin-ui";
 import { requireAdmin } from "@/lib/admin";
 import { REGION_LABEL } from "@/lib/labels";
+import { PendingButton } from "@/components/pending";
+import { doneInquiry } from "../actions";
 
 type F = { table_id: string; user_id: string; table_score: number | null; convo_score: number | null; venue_score: number | null;
   revisit_intent: number | null; recommend_intent: number | null; comment: string | null; created_at: string;
@@ -32,6 +34,16 @@ export default async function Feedback() {
       .order("created_at", { ascending: false }).limit(100),
     supabase.from("table_members").select("user_id", { count: "exact", head: true }).eq("attendance", "ATTENDED"),
   ]);
+  // 상담 챗봇으로 들어온 참가자 문의 (첨부 파일은 10분짜리 열람 링크로)
+  const { data: inqRaw } = await supabase.from("inquiries")
+    .select("id, body, file_path, file_name, status, created_at, profiles(name, gender, birth_year, phone)")
+    .order("status").order("created_at", { ascending: false }).limit(50);
+  type Inq = { id: string; body: string; file_path: string | null; file_name: string | null; status: string; created_at: string;
+    profiles: { name: string; gender: string; birth_year: number; phone: string | null } | null };
+  const inqs = (inqRaw ?? []) as unknown as Inq[];
+  const paths = inqs.map((q) => q.file_path).filter(Boolean) as string[];
+  const signed = paths.length ? (await supabase.storage.from("inquiry-files").createSignedUrls(paths, 600)).data ?? [] : [];
+  const urlOf = new Map(signed.map((x) => [x.path, x.signedUrl]));
   const list = (fb ?? []) as unknown as F[];
   const pref = (prefs ?? []) as unknown as Pref[];
   const reports = (reps ?? []) as unknown as Rep[];
@@ -46,7 +58,7 @@ export default async function Feedback() {
 
   return (
     <div className="space-y-5">
-      <AdminTitle title="피드백·신고" desc="사람별 선호·신고는 당사자에게 공개되지 않아요. 신고가 들어오면 두 사람은 다음 매칭에서 즉시 분리되고, 조치는 처리대기함에서 해요." />
+      <AdminTitle title="피드백·신고·문의" desc="참가자 문의는 맨 위에 모여요. 사람별 선호·신고는 당사자에게 공개되지 않아요. 신고가 들어오면 두 사람은 다음 매칭에서 즉시 분리되고, 조치는 처리대기함에서 해요." />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
         <Stat label="피드백 응답률" value={attended ? `${Math.round((list.length / attended) * 100)}%` : `${list.length}건`} />
         <Stat label="테이블 만족도" value={avg(list.map((f) => f.table_score))} tone="ok" />
@@ -55,6 +67,32 @@ export default async function Feedback() {
         <Stat label="재참여 의향" value={avg(list.map((f) => f.revisit_intent))} />
         <Stat label="추천 의향" value={avg(list.map((f) => f.recommend_intent))} />
       </div>
+
+      <section>
+        <h2 className="mb-2 font-semibold">참가자 문의 <span className="text-sm font-normal text-[#8B6A66]">상담 챗봇에서 운영팀으로 전달된 것 · 미확인 {inqs.filter((q) => q.status === "OPEN").length}건</span></h2>
+        <div className="space-y-2">
+          {inqs.length === 0 && <p className="rounded-2xl bg-white p-4 text-sm text-[#8B6A66]">아직 들어온 문의가 없어요.</p>}
+          {inqs.map((q) => (
+            <div key={q.id} className={`flex flex-wrap items-start gap-3 rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(74,52,38,0.08)] ${q.status === "DONE" ? "opacity-60" : ""}`}>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm">
+                  <b>{q.profiles?.name ?? "알 수 없음"}</b>
+                  {q.profiles && <GenderTag gender={q.profiles.gender} birthYear={q.profiles.birth_year} />}
+                  <span className="ml-2 text-xs text-[#8B6A66]">{q.profiles?.phone ?? ""} · {shortDt(q.created_at)}</span>
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-[#2E1B1E]">{q.body}</p>
+                {q.file_path && (urlOf.get(q.file_path)
+                  ? <a href={urlOf.get(q.file_path)!} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm font-semibold text-[#7A1F2B] underline">📎 {q.file_name ?? "첨부 파일"} 열기</a>
+                  : <span className="mt-1 inline-block text-xs text-[#8B6A66]">📎 첨부 파일을 열 수 없어요</span>)}
+              </div>
+              {q.status === "OPEN"
+                ? <form action={doneInquiry}><input type="hidden" name="id" value={q.id} />
+                    <PendingButton className="rounded-lg bg-[#7A1F2B] px-3 py-1.5 text-sm text-white">확인 완료</PendingButton></form>
+                : <Pill tone="ok">확인 완료</Pill>}
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-2 font-semibold">모임일별 만족도</h2>

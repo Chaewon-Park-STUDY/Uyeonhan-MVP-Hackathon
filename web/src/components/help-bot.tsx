@@ -1,8 +1,10 @@
 "use client";
 // 참가자 상담 챗봇 — 자주 묻는 질문을 키워드로 찾아 바로 답해 줌 (외부 AI 호출 없음: 비용·개인정보·오답 위험 없음)
+// 답이 없거나 사진·PDF를 보내면 "운영팀 문의"로 저장 (inquiries + 비공개 파일 보관함) → 운영자 피드백·신고 화면에서 확인
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createBrowser } from "@/lib/supabase/browser";
 
 type QA = { q: string; keys: string[]; a: string; link?: [string, string] };
 const FAQ: QA[] = [
@@ -31,8 +33,10 @@ const FAQ: QA[] = [
 ];
 const QUICK = [0, 2, 3, 7, 8];
 
-type Msg = { from: "bot" | "me"; text: string; link?: [string, string] };
-const HELLO: Msg = { from: "bot", text: "안녕하세요, 우연한 식탁이에요. 궁금한 걸 물어보거나 아래 질문을 눌러 보세요." };
+type Msg = { from: "bot" | "me"; text: string; link?: [string, string]; file?: string; ask?: string };
+const HELLO: Msg = { from: "bot", text: "안녕하세요, 우연한 식탁이에요 :) 궁금한 걸 물어보거나 아래 질문을 눌러 보세요. 사진이나 PDF를 붙여 보내면 운영팀에 바로 전달돼요." };
+const MAX = 5 * 1024 * 1024;
+const OK_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"];
 
 function answer(text: string): Msg {
   const t = text.toLowerCase().replace(/\s+/g, " ");
@@ -43,7 +47,7 @@ function answer(text: string): Msg {
   }
   return best
     ? { from: "bot", text: best.a, link: best.link }
-    : { from: "bot", text: "그 질문은 제가 아직 답하기 어려워요. 아래 자주 묻는 질문을 눌러 보시거나, 다른 말로 다시 물어봐 주세요." };
+    : { from: "bot", text: "그 질문은 제가 바로 답하기 어려워요. 운영팀에 그대로 전달할까요?", ask: text };
 }
 
 export function HelpBot() {
@@ -51,59 +55,123 @@ export function HelpBot() {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([HELLO]);
   const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
   const end = useRef<HTMLDivElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [msgs, open]);
   // 운영자 화면, 단체방(입력창과 겹침), 로그인 화면에서는 숨김
   if (path.startsWith("/admin") || path.startsWith("/table/") || path.startsWith("/login")) return null;
 
-  const ask = (q: string, a?: Msg) => {
-    if (!q.trim()) return;
-    setMsgs((m) => [...m, { from: "me", text: q }, a ?? answer(q)]);
-    setText("");
+  const say = (...m: Msg[]) => setMsgs((xs) => [...xs, ...m]);
+
+  // 운영팀 문의로 저장 (로그인 필요)
+  const sendInquiry = async (body: string, f: File | null) => {
+    setBusy(true);
+    try {
+      const sb = createBrowser();
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) { say({ from: "bot", text: "운영팀 문의는 로그인 후에 남길 수 있어요.", link: ["/login", "로그인하기"] }); return; }
+      let file_path: string | null = null;
+      if (f) {
+        const ext = f.name.includes(".") ? f.name.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+        file_path = `${user.id}/${Date.now()}${ext ? "." + ext : ""}`;
+        const up = await sb.storage.from("inquiry-files").upload(file_path, f, { contentType: f.type });
+        if (up.error) { say({ from: "bot", text: "파일을 올리지 못했어요. 5MB 이하의 사진(PNG·JPG)이나 PDF인지 확인해 주세요." }); return; }
+      }
+      const { error } = await sb.from("inquiries").insert({ body: body || "(파일만 보냄)", file_path, file_name: f?.name ?? null });
+      if (error) { say({ from: "bot", text: "문의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요." }); return; }
+      say({ from: "bot", text: "운영팀에 전달했어요. 확인하고 프로필에 적어 주신 연락처로 안내드릴게요. 급한 일이면 내용을 조금 더 자세히 적어 주세요." });
+    } finally { setBusy(false); }
+  };
+
+  const submit = () => {
+    const q = text.trim();
+    if (!q && !file) return;
+    const f = file;
+    say({ from: "me", text: q || "파일을 보냈어요", file: f?.name });
+    setText(""); setFile(null);
+    if (f) sendInquiry(q, f);        // 파일이 있으면 바로 운영팀으로
+    else say(answer(q));
+  };
+
+  const pick = (f: File | undefined) => {
+    if (!f) return;
+    if (!OK_TYPES.includes(f.type)) { say({ from: "bot", text: "사진(PNG·JPG·WEBP·GIF)이나 PDF만 보낼 수 있어요." }); return; }
+    if (f.size > MAX) { say({ from: "bot", text: "5MB 이하의 파일만 보낼 수 있어요." }); return; }
+    setFile(f);
   };
 
   return (
     <>
       {!open && (
         <button onClick={() => setOpen(true)} aria-label="상담 열기"
-                className="fixed bottom-5 right-5 z-40 flex items-center gap-1.5 rounded-full bg-[#7A1F2B] px-4 py-3 text-sm font-semibold text-white shadow-lg">
+                className="fixed bottom-5 right-5 z-40 flex items-center gap-1.5 rounded-full bg-[#7A1F2B] px-5 py-3.5 text-base font-semibold text-white shadow-lg">
           💬 궁금한 점
         </button>
       )}
       {open && (
-        <div className="fixed inset-x-3 bottom-3 z-50 flex max-h-[75dvh] flex-col overflow-hidden rounded-2xl border border-[#EFE3DC] bg-[#FBF7F0] shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[380px]">
-          <div className="flex items-center justify-between bg-[#7A1F2B] px-4 py-3 text-white">
-            <p className="font-semibold">우연한 식탁 상담</p>
-            <button onClick={() => setOpen(false)} aria-label="닫기" className="text-lg leading-none">✕</button>
+        <div className="fixed inset-x-2 bottom-2 top-16 z-50 flex flex-col overflow-hidden rounded-3xl border border-[#EFE3DC] bg-[#FBF7F0] shadow-2xl
+                        sm:inset-x-auto sm:bottom-5 sm:right-5 sm:top-auto sm:h-[min(720px,calc(100dvh-6rem))] sm:w-[420px]">
+          <div className="flex items-center justify-between bg-[#7A1F2B] px-5 py-4 text-white">
+            <div>
+              <p className="text-lg font-bold">우연한 식탁 상담</p>
+              <p className="text-xs text-[#F4E4DE]">자주 묻는 질문은 바로, 나머지는 운영팀이 답해요</p>
+            </div>
+            <button onClick={() => setOpen(false)} aria-label="닫기" className="text-2xl leading-none">✕</button>
           </div>
-          <div className="flex-1 space-y-2 overflow-y-auto px-3 py-3 text-sm">
+          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-[15px]">
             {msgs.map((m, i) => (
               <div key={i} className={`flex ${m.from === "me" ? "justify-end" : ""}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3 py-2 leading-relaxed ${m.from === "me" ? "bg-[#7A1F2B] text-white" : "bg-white text-[#2E1B1E] shadow-[0_1px_2px_rgba(74,52,38,0.08)]"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed ${m.from === "me" ? "bg-[#7A1F2B] text-white" : "bg-white text-[#2E1B1E] shadow-[0_1px_2px_rgba(74,52,38,0.08)]"}`}>
                   {m.text}
+                  {m.file && <span className="mt-1 block text-xs opacity-80">📎 {m.file}</span>}
                   {m.link && (
                     <Link href={m.link[0]} onClick={() => setOpen(false)} className="mt-1.5 block font-semibold text-[#7A1F2B] underline underline-offset-2">
                       {m.link[1]} →
                     </Link>
                   )}
+                  {m.ask && (
+                    <button disabled={busy} onClick={() => { say({ from: "me", text: "네, 전달해 주세요" }); sendInquiry(m.ask!, null); }}
+                            className="mt-2 block rounded-full bg-[#7A1F2B] px-3 py-1 text-sm font-semibold text-white disabled:opacity-50">
+                      운영팀에 전달하기
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
+            {busy && <p className="text-xs text-[#8B6A66]">보내는 중…</p>}
             <div ref={end} />
           </div>
-          <div className="flex gap-1.5 overflow-x-auto px-3 pb-2">
+          <div className="flex flex-wrap gap-1.5 border-t border-[#EFE3DC] px-4 pt-3">
             {QUICK.map((i) => (
-              <button key={i} onClick={() => ask(FAQ[i].q, { from: "bot", text: FAQ[i].a, link: FAQ[i].link })}
-                      className="shrink-0 rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-xs text-[#6A4A4C]">
+              <button key={i} onClick={() => say({ from: "me", text: FAQ[i].q }, { from: "bot", text: FAQ[i].a, link: FAQ[i].link })}
+                      className="rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-xs text-[#6A4A4C]">
                 {FAQ[i].q}
               </button>
             ))}
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); ask(text); }} className="flex gap-2 border-t border-[#EFE3DC] bg-white p-2.5">
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 환불은 언제까지 돼요?"
-                   className="min-w-0 flex-1 rounded-full border border-[#E9DCD3] bg-[#FFFCF9] px-3 py-2 text-sm outline-none focus:border-[#7A1F2B]" />
-            <button className="rounded-full bg-[#7A1F2B] px-4 text-sm font-semibold text-white">보내기</button>
-          </form>
+          <div className="p-3">
+            {file && (
+              <div className="mb-2 flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm">
+                📎 <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                <button onClick={() => setFile(null)} className="text-[#8B6A66]" aria-label="첨부 빼기">✕</button>
+              </div>
+            )}
+            <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="rounded-2xl border border-[#E9DCD3] bg-white p-2">
+              <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="예: 환불은 언제까지 돼요?"
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); } }}
+                        className="w-full resize-none bg-transparent px-2 py-1 text-[15px] outline-none" />
+              <div className="flex items-center justify-between">
+                <button type="button" onClick={() => picker.current?.click()} aria-label="파일 첨부"
+                        className="rounded-full px-2 py-1 text-lg text-[#8B6A66] hover:bg-[#FBF1EC]">📎</button>
+                <input ref={picker} type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" className="hidden"
+                       onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+                <button disabled={busy || (!text.trim() && !file)} className="rounded-full bg-[#7A1F2B] px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-40">보내기</button>
+              </div>
+            </form>
+            <p className="mt-1.5 text-center text-[11px] text-[#B7A3A0]">자동 답변은 자주 묻는 질문 기준이에요. 정확한 내용은 운영팀 답변을 따라 주세요.</p>
+          </div>
         </div>
       )}
     </>

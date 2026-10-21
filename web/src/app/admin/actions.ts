@@ -181,3 +181,10 @@ export async function setSlotCapacity(formData: FormData) {
   });
   revalidatePath("/admin/slots");
 }
+
+// 상담 챗봇 문의 확인 완료
+export async function doneInquiry(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.from("inquiries").update({ status: "DONE", done_at: new Date().toISOString() }).eq("id", String(formData.get("id")));
+  revalidatePath("/admin/feedback");
+}
