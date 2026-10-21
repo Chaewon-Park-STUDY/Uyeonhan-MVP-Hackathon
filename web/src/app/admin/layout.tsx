@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin";
 
 const TABS = [
   ["/admin", "대시보드"],
-  ["/admin/exceptions", "예외함"],
+  ["/admin/exceptions", "처리대기함"],
   ["/admin/tables", "테이블"],
   ["/admin/slots", "회차·식당"],
   ["/admin/settings", "설정"],

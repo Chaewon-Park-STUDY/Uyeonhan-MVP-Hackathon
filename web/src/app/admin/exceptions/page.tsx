@@ -25,7 +25,7 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">예외함 {!all && <span className="text-sm font-normal text-[#8B6A66]">처리 대기 {list.length}건</span>}</h1>
+        <h1 className="text-xl font-bold">처리대기함 {!all && <span className="text-sm font-normal text-[#8B6A66]">처리 대기 {list.length}건</span>}</h1>
         <Link href={all ? "/admin/exceptions" : "/admin/exceptions?all=1"} className="text-sm text-[#7A1F2B] underline">
           {all ? "처리 대기만 보기" : "처리된 것도 보기"}
         </Link>
@@ -33,7 +33,7 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
       <p className="text-xs text-[#8B6A66]">
         자동으로 처리하지 못한 건만 여기에 모여요. 운영자는 이것만 확인하면 돼요. (예: 알레르기 조건에 맞는 식당 없음, 취소로 4명 미만, 참가자 신고)
       </p>
-      {list.length === 0 && <Card><p className="text-sm text-[#8B6A66]">처리할 예외가 없어요. 모든 회차가 자동으로 운영되고 있어요. 🎉</p></Card>}
+      {list.length === 0 && <Card><p className="text-sm text-[#8B6A66]">처리할 건이 없어요. 모든 회차가 자동으로 운영되고 있어요. 🎉</p></Card>}
       {list.map((e) => (
         <Card key={e.id}>
           <div className="flex flex-wrap items-center gap-2">
