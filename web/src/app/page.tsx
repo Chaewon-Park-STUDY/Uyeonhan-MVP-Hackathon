@@ -245,7 +245,7 @@ function AppCard({ a, intro, passReused, feedbackDone, seatCanceled }: { a: AppR
           다음 안내: <b>{fmtDeadline(announce)}</b>에 자동 매칭 결과를 알려 드려요.
         </p>
       )}
-      {!canceled && CANCELABLE.includes(a.match_status) && announce && announce > new Date().toISOString() && (
+      {!canceled && CANCELABLE.includes(a.match_status) && slots.length > 0 && slots.every((s) => s.apply_deadline > nowIso) && (
         <details className="group mt-2 text-xs text-[#8B6A66]">
           <summary className="ml-auto w-fit cursor-pointer list-none rounded-lg border border-[#E9DCD3] px-2.5 py-1 group-open:hidden">신청 취소</summary>
           <form action={cancelApplication} className="mt-1 rounded-xl bg-[#FBF1EC] p-3 text-[#6A4A4C]">

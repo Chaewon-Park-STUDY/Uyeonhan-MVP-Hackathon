@@ -68,11 +68,12 @@ export function CalendarBoard({ slots, stats }: { slots: BoardSlot[]; stats: Slo
       {group(slots).map((list) => (
         <div key={list[0].starts_at} className="rounded-2xl border border-[#EFE3DC] bg-white p-4 shadow-[0_1px_3px_rgba(74,52,38,0.06)]">
           <DateHead list={list} />
-          <div className="mt-3 flex flex-wrap gap-1.5">
+          {/* 지역 4곳: 휴대폰 2×2, 넓은 화면 한 줄 4칸 (한 칸만 아래로 떨어지지 않게) */}
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {list.map((s) => {
               const b = slotBadge(s, list, st);
               return (
-                <span key={s.id} className="flex items-center gap-1.5 rounded-full border border-[#E9DCD3] bg-[#FFFCF9] px-3 py-1.5 text-sm text-[#2E1B1E]">
+                <span key={s.id} className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 rounded-xl border border-[#E9DCD3] bg-[#FFFCF9] px-2 py-2 text-sm text-[#2E1B1E]">
                   <Dot code={s.region_code} />{REGION_LABEL[s.region_code]}{b && <Badge text={b} />}
                 </span>
               );

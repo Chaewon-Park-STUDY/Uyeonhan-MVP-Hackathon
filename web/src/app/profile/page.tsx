@@ -10,7 +10,11 @@ type PassRow = { id: string; type: string; remaining: number | null; expires_at:
 function singleState(x: PassRow) {
   const used = x.applications.find((a) => a.application_status === "SUBMITTED" && !["NO_MATCH"].includes(a.match_status)
     && !a.payment_status.startsWith("REFUND"));
-  if (!used) return `남은 ${x.remaining}회 · 다음 신청에 바로 사용`;
+  if (!used) {
+    // 결제까지 끝났는데 매칭이 안 된(보관) 1회권만 다음 신청에 재사용됨 — 결제 전 취소한 건은 표시하지 않음
+    const kept = x.applications.some((a) => a.match_status === "NO_MATCH" && a.payment_status === "PAID");
+    return kept ? `남은 ${x.remaining}회 · 다음 신청에 바로 사용` : null;
+  }
   const first = used.application_slots.map((s) => s.event_slots?.starts_at).filter(Boolean).sort()[0];
   return first ? `${fmtDate(first).split(" ").slice(0, 3).join(" ")} 모임에 사용 중` : "신청에 사용 중";
 }
@@ -81,6 +85,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
               if (x.type !== "SINGLE" ? !(x.expires_at && x.expires_at > nowIso) : !((x.remaining ?? 0) > 0)) continue;
               const label = PASSES.find((q) => q.value === x.type)?.label ?? x.type;
               const state = x.type === "SINGLE" ? singleState(x) : `${fmtDate(x.expires_at!).split(" ").slice(0, 3).join(" ")}까지`;
+              if (!state) continue;
               const k = label + state;
               rows.set(k, { label, state, n: (rows.get(k)?.n ?? 0) + 1 });
             }

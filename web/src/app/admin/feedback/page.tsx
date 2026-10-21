@@ -37,7 +37,7 @@ export default async function Feedback() {
   // 상담 챗봇으로 들어온 참가자 문의 (첨부 파일은 10분짜리 열람 링크로)
   const { data: inqRaw } = await supabase.from("inquiries")
     .select("id, body, file_path, file_name, status, created_at, profiles(name, gender, birth_year, phone)")
-    .order("status").order("created_at", { ascending: false }).limit(50);
+    .order("status", { ascending: false }).order("created_at", { ascending: false }).limit(50);
   type Inq = { id: string; body: string; file_path: string | null; file_name: string | null; status: string; created_at: string;
     profiles: { name: string; gender: string; birth_year: number; phone: string | null } | null };
   const inqs = (inqRaw ?? []) as unknown as Inq[];

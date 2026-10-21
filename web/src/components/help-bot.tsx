@@ -132,7 +132,7 @@ export function HelpBot() {
                     </Link>
                   )}
                   {m.ask && (
-                    <button disabled={busy} onClick={() => { say({ from: "me", text: "네, 전달해 주세요" }); sendInquiry(m.ask!, null); }}
+                    <button disabled={busy} onClick={() => { const q = m.ask!; setMsgs((xs) => xs.map((x, j) => (j === i ? { ...x, ask: undefined } : x))); say({ from: "me", text: "네, 전달해 주세요" }); sendInquiry(q, null); }}
                             className="mt-2 block rounded-full bg-[#7A1F2B] px-3 py-1 text-sm font-semibold text-white disabled:opacity-50">
                       운영팀에 전달하기
                     </button>
@@ -159,7 +159,7 @@ export function HelpBot() {
               </div>
             )}
             <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="rounded-2xl border border-[#E9DCD3] bg-white p-2">
-              <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="예: 환불은 언제까지 돼요?"
+              <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={2000} placeholder="예: 환불은 언제까지 돼요?"
                         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); } }}
                         className="w-full resize-none bg-transparent px-2 py-1 text-[15px] outline-none" />
               <div className="flex items-center justify-between">

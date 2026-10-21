@@ -34,3 +34,4 @@ drop policy if exists inq_file_sel on storage.objects;
 create policy inq_file_sel on storage.objects for select to authenticated
   using (bucket_id = 'inquiry-files' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
 alter table inquiries alter column user_id set default current_profile_id();
+grant select, insert, update on inquiries to authenticated;
