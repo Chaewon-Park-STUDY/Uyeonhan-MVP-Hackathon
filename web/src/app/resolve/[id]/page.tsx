@@ -50,7 +50,7 @@ export default async function ResolvePage({ params, searchParams }: {
         <input type="hidden" name="id" value={id} />
         <Card>
           <p className="mb-3 font-semibold">자리가 있는 회차로 옮기기</p>
-          {(slots ?? []).length === 0 && <p className="text-sm text-[#8B6A66]">지금 옮길 수 있는 회차가 없어요.</p>}
+          {(slots ?? []).length === 0 && <p className="text-sm text-[#8B6A66]">지금 옮길 수 있는 회차가 없어요. 아래에서 이용권 보관이나 환불을 골라 주세요.</p>}
           <div className="space-y-2">
             {((slots ?? []) as Slot[]).map((s, i) => {
               const taken = busy.has(day(s.starts_at));

@@ -27,7 +27,7 @@ export default async function PayPage({ params, searchParams }: {
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 
   return (
-    <Page title="결제하기" back="/apply">
+    <Page title="결제하기" back="/">
       <ErrorBox message={error} />
       <Card className="space-y-3">
         <div className="flex justify-between text-sm">

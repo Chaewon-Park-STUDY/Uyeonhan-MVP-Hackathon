@@ -39,7 +39,7 @@ export default async function FeedbackDone({ params }: { params: Promise<{ id: s
           <p className="text-xs text-[#8B6A66]">다음 우연한 식탁</p>
           <p className="mt-1 font-bold">{fmtDate(next.starts_at)} · {REGION_LABEL[next.region_code]}</p>
           <p className="mt-0.5 text-xs text-[#8B6A66]">신청 마감 {fmtDeadline(next.apply_deadline)}</p>
-          <div className="mt-3"><ButtonLink href="/apply">쿠폰 쓰고 신청하기</ButtonLink></div>
+          <div className="mt-3"><ButtonLink href="/apply">{coupon ? "쿠폰 쓰고 신청하기" : "신청하기"}</ButtonLink></div>
         </Card>
       )}
       <ButtonLink href="/" tone="ghost">홈으로</ButtonLink>

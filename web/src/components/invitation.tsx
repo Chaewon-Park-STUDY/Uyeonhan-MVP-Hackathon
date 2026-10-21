@@ -87,7 +87,7 @@ export function Invitation({ nextDate, regions }: { nextDate: string | null; reg
                 className="mt-6 block rounded-xl bg-[#E6C56A] px-4 py-3.5 font-semibold text-[#3A0D14] shadow-md hover:bg-[#F0D58A]">
             초대 수락하기
           </Link>
-          <Link href="/login" className="mt-3 inline-block text-sm text-[#F3E9D8]/70 underline">이미 초대받았어요 (로그인)</Link>
+          <Link href="/login" className="mt-3 inline-block text-sm text-[#F3E9D8]/70 underline">이미 계정이 있어요 · 로그인</Link>
           <p className="mt-6 font-brand text-xs tracking-wide text-[#F3E9D8]/60">by Whatsup House</p>
         </div>
       </article>

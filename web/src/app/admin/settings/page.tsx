@@ -86,7 +86,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         <div className="rounded-2xl border border-dashed border-[#D9C2B8] bg-[#F6EDE7] p-4 text-xs text-[#6A4A4C]">
           <p className="mb-2 font-semibold text-[#7A1F2B]">💳 현재 요금·환불 정책</p>
           <p>1회권 {Number((pricing.SINGLE as { price?: number })?.price ?? 9900).toLocaleString()}원 · 멤버십 1/3/6개월</p>
-          <p className="mt-1">환불: 모임 주 화요일 24:00까지 100%, 이후 0% · 매칭 실패 시 100% 또는 이동</p>
+          <p className="mt-1">환불: 모임 주 화요일 밤 12시까지 100%, 이후 0% · 매칭 실패 시 100% 또는 이동</p>
           <p className="mt-1">노쇼 1점 · 당일 취소 0.5점 · 90일 2점 → 30일 제한</p>
         </div>
       </div>

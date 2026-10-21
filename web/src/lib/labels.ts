@@ -58,10 +58,10 @@ export const FAIL_PREFS = [
 ] as const;
 
 export const REFUND_POLICY = [
-  "모임 주 화요일 24:00까지 취소하면 전액 환불돼요.",
-  "화요일 24:00 이후에는 환불이 어려워요. (매칭이 이때 확정돼요)",
-  "매칭이 안 되면 언제나 전액 환불되거나, 원하는 다른 회차로 옮길 수 있어요.",
-  "당일 취소와 노쇼는 환불되지 않고, 90일 안에 2회가 쌓이면 30일간 신청이 제한돼요.",
+  "모임 주 화요일 밤 12시(신청 마감)까지 취소하면 전액 환불돼요.",
+  "화요일 밤 12시가 지나면 매칭이 시작돼 환불이 어려워요.",
+  "매칭이 안 되면 1회권은 전액 환불 또는 다른 회차로 이동할 수 있고, 멤버십은 기간이 7일 늘어나요.",
+  "당일 취소(0.5점)와 노쇼(1점)는 환불되지 않고, 90일 안에 2점이 쌓이면 30일간 신청이 제한돼요.",
 ];
 
 export const PAYMENT_LABEL: Record<string, string> = {
@@ -159,7 +159,7 @@ export function notiText(template: string, p: NotiPayload) {
   const amount = p.amount != null ? won(p.amount) : "";
   switch (template) {
     case "APPLIED":
-      return { title: "신청이 접수됐어요 📝", body: `${when} ${where} 등 희망 회차. 신청 내용은 홈에서 확인하고, 신청 마감 전까지 홈의 '신청 취소'로 취소할 수 있어요.` };
+      return { title: "신청이 접수됐어요 📝", body: `${when} ${where} 등 희망 회차로 신청했어요. 신청 마감 전까지는 홈에서 '신청 취소'를 눌러 취소할 수 있어요.` };
     case "APP_CANCELED":
       return { title: "신청을 취소했어요", body: `${when} ${where} 신청이 취소됐어요. 1회권 결제는 전액 환불되고, 멤버십은 기간이 그대로 남아요.` };
     case "PAYMENT_PENDING":
@@ -171,13 +171,13 @@ export function notiText(template: string, p: NotiPayload) {
     case "MATCH_CONFIRMED":
       return { title: "매칭이 확정됐어요 🎉", body: `${when} ${where}. 단체방에서 먼저 인사해 보세요.` };
     case "MATCH_FAILED":
-      return { title: "이번 회차는 매칭되지 않았어요", body: `${p.reason ? `사유: ${p.reason}. ` : "조건에 맞는 테이블을 못 만들었어요. "}다른 일정 · 이용권 보관 · 전액 환불 중에서 골라 주세요.` };
+      return { title: "이번 회차는 매칭되지 않았어요", body: `${p.reason ? `사유: ${tidyReason(p.reason)}. ` : "조건에 맞는 테이블을 못 만들었어요. "}다른 일정 · 이용권 보관(멤버십은 7일 연장) · 1회권 전액 환불 중에서 골라 주세요.` };
     case "MOVED":
       return { title: "일정을 옮겼어요 📅", body: `${when} ${where} 회차로 옮겼어요. ${run}에 자동으로 매칭돼요.` };
     case "REFUND_REQUESTED":
-      return { title: "환불을 진행하고 있어요", body: `${amount} 원래 결제 수단으로 환불 중이에요.` };
+      return { title: "환불을 진행하고 있어요", body: `${amount}을 원래 결제 수단으로 환불하고 있어요.` };
     case "REFUNDED":
-      return { title: "환불이 완료됐어요", body: `${amount} 환불됐어요. 카드사에 따라 반영까지 며칠 걸릴 수 있어요.` };
+      return { title: "환불이 완료됐어요", body: `${amount}이 환불됐어요. 카드사에 따라 반영까지 며칠 걸릴 수 있어요.` };
     case "REMINDER_D1":
       return { title: "내일 저녁 우연한 식탁", body: `${when} ${where}. 예약명 "우연한 식탁". 못 오게 되면 오늘 중에 알려 주세요.` };
     case "REMINDER_D0":
@@ -233,7 +233,7 @@ export const ERROR_TEXT: Record<string, string> = {
   CHECKIN_CLOSED: "체크인은 모임 1시간 전부터 할 수 있어요.",
   CANCEL_CLOSED: "모임이 시작된 뒤에는 취소할 수 없어요.",
   CANCEL_NOT_ALLOWED: "이미 매칭이 진행됐거나 끝난 신청은 여기서 취소할 수 없어요.",
-  CANCEL_AFTER_DEADLINE: "신청 마감(화요일 24:00)이 지나 취소할 수 없어요. 확정 뒤에는 테이블 화면에서 참석 취소를 해 주세요.",
+  CANCEL_AFTER_DEADLINE: "신청 마감(화요일 밤 12시)이 지나 취소할 수 없어요. 확정 뒤에는 테이블 화면에서 참석 취소를 해 주세요.",
   CANCELED_APPLICATION: "취소한 신청이라 결제할 수 없어요. 새로 신청해 주세요.",
   REFERRAL_NOT_FOUND: "없는 초대 코드예요. 다시 확인해 주세요.",
   REFERRAL_SELF: "내 초대 코드는 쓸 수 없어요.",

@@ -67,7 +67,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <li>③ 나와 닮은 동물 · 함께하고 싶은 동물</li>
             <li>④ 알레르기 · 덜 좋아하는 음식</li>
           </ol>
-          <p className="mt-4 text-xs text-[#8B6A66]">3분이면 끝나요. 같은 테이블 사람들에게는 이름 첫 글자와 동물 카드 정도만 보여요.</p>
+          <p className="mt-4 text-xs text-[#8B6A66]">3분이면 끝나요. 같은 테이블 사람들에게는 이름 첫 글자·연령대·MBTI·관심사·동물 카드만 보여요.</p>
           <div className="mt-5"><ButtonLink href="/onboarding">자리 카드 만들기</ButtonLink></div>
         </section>
       </Page>
@@ -135,7 +135,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       {sp.done && (
         <Flash>
           신청이 접수됐어요. 매칭 결과는 발표 시각에 자동으로 알려 드려요.
-          <span className="mt-1 block text-xs opacity-80">환불 규정: 모임 주 화요일 24:00까지 전액 환불, 이후 환불 불가 · 매칭이 안 되면 언제나 전액 환불 또는 일정 이동 · 당일 취소 0.5점, 노쇼 1점(90일 안에 2점이면 30일 제한)</span>
+          <span className="mt-1 block text-xs opacity-80">환불 규정: 모임 주 화요일 밤 12시까지 전액 환불, 이후 환불 불가 · 매칭이 안 되면 1회권은 전액 환불 또는 일정 이동, 멤버십은 7일 연장 · 당일 취소 0.5점, 노쇼 1점(90일 안에 2점이면 30일 제한)</span>
         </Flash>
       )}
       {sp.error && <p className="mb-4 rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{sp.error}</p>}

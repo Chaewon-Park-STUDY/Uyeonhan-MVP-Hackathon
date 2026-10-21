@@ -107,7 +107,7 @@ function StatusBar({ id, st }: { id: string; st: Status }) {
     return <Card className="mt-4"><p className="text-sm text-[#6A4A4C]">이번 모임은 취소했어요. 환불 규정에 따라 환불되지 않아요.</p></Card>;
   }
   if (st.attendance === "NO_SHOW") {
-    return <Card className="mt-4"><p className="text-sm text-[#A2412A]">노쇼로 기록됐어요. 90일 안에 2회가 쌓이면 30일간 신청이 제한돼요.</p></Card>;
+    return <Card className="mt-4"><p className="text-sm text-[#A2412A]">노쇼로 기록돼 1점이 쌓였어요. 90일 안에 2점이 되면 30일간 신청이 제한돼요.</p></Card>;
   }
   return (
     <div className="mt-4 space-y-2">

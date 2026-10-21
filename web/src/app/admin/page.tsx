@@ -96,7 +96,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       {/* 회차별 현황 + 매칭 실행 */}
       <Card>
         <h2 className="mb-3 font-semibold">회차별 현황</h2>
-        <p className="mb-3 text-xs text-[#8B6A66]">매칭은 매시간 5분에 자동으로 확인해, 마감(화 24:00)이 지난 회차를 실행해요. 여기서는 미리 결과를 보거나 즉시 실행할 수 있어요.</p>
+        <p className="mb-3 text-xs text-[#8B6A66]">매칭은 매시간 5분에 자동으로 확인해, 마감(화요일 밤 12시)이 지난 회차를 실행해요. 여기서는 미리 결과를 보거나 즉시 실행할 수 있어요.</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="text-left text-xs text-[#8B6A66]">
