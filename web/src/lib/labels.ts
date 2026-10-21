@@ -154,7 +154,7 @@ export const NOTI_TEMPLATES: { code: string; when: string; sample: string }[] = 
 
 export function notiText(template: string, p: NotiPayload) {
   const when = p.starts_at ? fmtDate(p.starts_at) : "";
-  const where = p.venue ?? (p.region ? REGION_LABEL[p.region] : "");
+  const where = p.venue ? venueName(p.venue) : p.region ? REGION_LABEL[p.region] : "";
   const run = p.match_run_at ? fmtDeadline(p.match_run_at) : "마감 직후";
   const amount = p.amount != null ? won(p.amount) : "";
   switch (template) {
@@ -201,7 +201,7 @@ export function notiTextWith(overrides: Record<string, MsgOverride> | null | und
   if (!o || (!o.title && !o.body)) return base;
   const fill = (t: string) => t
     .replaceAll("{날짜}", p.starts_at ? fmtDate(p.starts_at) : "")
-    .replaceAll("{장소}", p.venue ?? (p.region ? REGION_LABEL[p.region] : ""))
+    .replaceAll("{장소}", p.venue ? venueName(p.venue) : p.region ? REGION_LABEL[p.region] : "")
     .replaceAll("{금액}", p.amount != null ? won(p.amount) : "")
     .replaceAll("{매칭시각}", p.match_run_at ? fmtDeadline(p.match_run_at) : "");
   return { title: o.title ? fill(o.title) : base.title, body: o.body ? fill(o.body) : base.body };

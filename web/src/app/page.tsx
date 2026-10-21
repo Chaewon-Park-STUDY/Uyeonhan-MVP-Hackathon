@@ -84,7 +84,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     .order("created_at", { ascending: false });
   // 취소한 신청은 최근 2주만 보여 줌
   const twoWeeks = new Date(Date.now() - 14 * 86400e3).toISOString();
-  const apps = ((data ?? []) as unknown as AppRow[]).filter((a) => a.application_status !== "CANCELED" || a.created_at > twoWeeks);
+  // 순서: 확정된 모임 → 진행 중(매칭 대기·선택 필요) → 끝난 것 → 취소
+  const rank = (a: AppRow) => a.application_status === "CANCELED" ? 4 : a.match_status === "CONFIRMED" ? 0
+    : a.match_status === "ALTERNATIVE_OFFERED" ? 1 : WAITING_LIKE.includes(a.match_status) ? 2 : 3;
+  const apps = ((data ?? []) as unknown as AppRow[]).filter((a) => a.application_status !== "CANCELED" || a.created_at > twoWeeks)
+    .sort((x, y) => rank(x) - rank(y) || y.created_at.localeCompare(x.created_at));
 
   // RET-02 다음 일정 추천: 진행 중인 신청이 없으면, 전에 갔던 지역·요일과 맞는 모집 회차를 먼저
   const active = apps.some((a) => a.application_status === "SUBMITTED" &&
