@@ -1,5 +1,6 @@
 import { Card, Label, Submit, inputCls } from "@/components/ui";
 import { FEATURE_LABEL, requireAdmin } from "@/lib/admin";
+import { HistoryCard, type Log } from "@/components/history-card";
 import { saveSettings } from "../actions";
 
 // 운영 정책 설정 (PRD ADM-08): 매칭 가중치·최소 점수·정책, 시연 모드, 노쇼 보상
@@ -14,15 +15,25 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const pricing = cfg.pricing ?? {};
   // §16 운영 추적: 최근 변경 이력
   const [{ data: logs }, { data: shist }] = await Promise.all([
-    supabase.from("audit_log").select("entity, field, old_value, new_value, actor, at").order("at", { ascending: false }).limit(30),
+    supabase.from("audit_log").select("entity, entity_id, field, old_value, new_value, actor, at").neq("entity", "chat_messages").order("at", { ascending: false }).limit(40),
     supabase.from("settings_history").select("key, actor, at").order("at", { ascending: false }).limit(10),
   ]);
-  const who = (a: string) => (a.startsWith("admin:") ? "운영자" : a.startsWith("user:") ? "참가자" : a.startsWith("system:matcher") ? "자동 매칭"
-    : a.startsWith("system:attendance") ? "참석 판정" : "시스템");
-  const ENTITY: Record<string, string> = { application: "신청", applications: "신청", profiles: "회원", table_members: "참석", payments: "결제",
-    event_slots: "회차", venues: "식당", exception_cases: "처리대기함", safety_reports: "신고", dining_tables: "테이블" };
+
+  // 이력에 나오는 신청·회원의 이름
+  const appIds = [...new Set((logs ?? []).filter((l) => l.entity.startsWith("application")).map((l) => l.entity_id))];
+  const profIds = [...new Set((logs ?? []).filter((l) => l.entity === "profiles").map((l) => l.entity_id)
+    .concat((logs ?? []).map((l) => /user ([0-9a-f-]{36})/.exec(l.new_value ?? "")?.[1]).filter(Boolean) as string[]))];
+  const [{ data: appNames }, { data: profNames }] = await Promise.all([
+    supabase.from("applications").select("id, profiles(name)").in("id", appIds.length ? appIds : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.from("profiles").select("id, name").in("id", profIds.length ? profIds : ["00000000-0000-0000-0000-000000000000"]),
+  ]);
+  const nameOf = new Map<string, string>([
+    ...((appNames ?? []) as unknown as { id: string; profiles: { name: string } | null }[]).map((a) => [a.id, a.profiles?.name ?? ""] as [string, string]),
+    ...((profNames ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name] as [string, string]),
+  ]);
 
   return (
+    <div className="space-y-5">
     <div className="grid gap-5 md:grid-cols-[1fr_320px]">
       <form action={saveSettings} className="space-y-4">
         {saved && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">저장했어요. 다음 매칭부터 적용돼요.</p>}
@@ -76,21 +87,10 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <p className="mt-1">환불: 모임 주 화요일 24:00까지 100%, 이후 0% · 매칭 실패 시 100% 또는 이동</p>
           <p className="mt-1">노쇼 1점 · 당일 취소 0.5점 · 90일 2점 → 30일 제한</p>
         </Card>
-        <Card className="text-xs text-[#6A4A4C]">
-          <p className="mb-2 font-semibold text-[#2E1B1E]">변경 이력 <span className="font-normal text-[#8B6A66]">누가·언제·무엇을</span></p>
-          <ul className="max-h-80 space-y-1 overflow-y-auto">
-            {(shist ?? []).map((h, i) => (
-              <li key={`s${i}`}>{new Date(h.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} · 설정 <b>{h.key}</b> 변경 ({who(h.actor)})</li>
-            ))}
-            {(logs ?? []).map((l, i) => (
-              <li key={i}>
-                {new Date(l.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} ·{" "}
-                {ENTITY[l.entity] ?? l.entity} {l.field}: {l.old_value ?? "-"} → <b>{(l.new_value ?? "-").replace(/ \(user [^)]*\)/, "")}</b> ({who(l.actor)})
-              </li>
-            ))}
-          </ul>
-        </Card>
       </div>
+    </div>
+    <HistoryCard logs={(logs ?? []) as Log[]} settings={(shist ?? []) as { key: string; actor: string; at: string }[]} nameOf={nameOf} />
     </div>
   );
 }
+
