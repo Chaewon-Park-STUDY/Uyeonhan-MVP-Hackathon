@@ -299,3 +299,32 @@ bₙ = b₀ + ½ (yᵀy + μ₀ᵀ Λ₀ μ₀ − μₙᵀ Λₙ μₙ)
 | 단체방 | 실시간, 내 메시지 삭제(원문은 운영자 감사 로그), 이모티콘 | 0008, `chat.tsx` |
 | 어드민 | 대시보드·처리대기함·테이블·회차/식당·설정, 노쇼 보상 쿠폰 실제 동작 | 0010, `/admin` |
 | 디자인 | 초대장 오프닝, 공식 포스터 재현 로고(FAQ Q12), 버건디·크림·골드, 동물 손님 식탁 일러스트 | `components/brand`, `invitation`, `table-illustration` |
+
+## 13. v0.4 변경 사항 (2026-10-21, PRD 필수 항목 전수 점검)
+
+| 영역 | 내용 | 위치 |
+|---|---|---|
+| 알림 §14 | 신청 완료·결제 대기·결제 완료·재배치 중·매칭 실패·일정 이동·환불 요청/완료·다음 모집·피드백 미응답(1회) 추가 → 총 14종. 신청 상태 변경 시 커밋 시점 트리거(deferrable)로 예약 | 0013 `app_notify`, `next_recruit_notify`, `feedback_remind_schedule` |
+| INF-08 | 리마인드를 올릴 단체방이 없으면 실패 기록 후 5분마다 재시도, 3회 실패 시 처리대기함(NOTIFY) | 0013 `deliver_notifications` |
+| §11 운영자 화면 | 신청자, 매칭 모니터, 참석, 결제·환불, 피드백·안전, 자동 메시지 화면 추가. 회차 만들기·식당 수용 수 설정. 대시보드 처리 현황 10종 | `/admin/*`, 0013 `admin_*` |
+| §7.2 | 테이블 상세에 참가자별 희망 일정 충족·이전 만남·차단/비선호 충돌·원하는 동물 충족·재배치 사유, 확정 시각, 단체방·발송 상태 | 0013 `admin_table_detail` |
+| RET-01 | 내 프로필에 참가 이력(날짜·지역·참석 상태·피드백 제출 여부) | `/profile` |
+| §16 | 회원 탈퇴: 개인정보(이름·연락처·직업·식사 정보)와 로그인 계정 즉시 삭제, 참석·피드백은 익명 통계로 보존, 결제 기록 5년 보관. 확정 모임·매칭 대기 중이면 먼저 정리 | 0013 `delete_my_account` |
+| 메시지 템플릿 | 운영자가 문구 수정 → settings.message_overrides, `{날짜}{장소}{금액}{매칭시각}` 자리표시자 | `/admin/messages` |
+
+## 14. v0.5 변경 사항 (2026-10-21, 독립 검토 반영)
+
+독립 검토(별도 리뷰어가 PRD·FAQ·코드만으로 P0 전수 대조)에서 나온 항목을 반영했다.
+
+| 항목 | 반영 | 위치 |
+|---|---|---|
+| §16 보안 | 참가자가 API로 role·restricted_until·deleted_at 등을 바꾸지 못하게 트리거로 차단. 신고는 작성만 가능 | 0014 `guard_profile_columns` |
+| FDB-01 | 증거 없는 미체크인은 자동 참석 처리하지 않고 노쇼 후보로 유지 | 0014 `finalize_attendance` |
+| STA-01 | 매칭 전 신청 취소 + 1회권 자동 환불 + 쿠폰 반환 | 0014 `cancel_application`, 홈 |
+| STA-04 / MAT-12 | 엔진의 실패 사유를 `match_resolutions.reason`에 저장, 홈·선택 화면·알림·매칭 모니터에 표시 | 0014 `apply_match_run` |
+| PAY-01 / §12 | MATCHING, REALLOCATING(다음 희망 날짜로 이월), TRANSFERRED, REFUND_AVAILABLE, REFUND_REQUESTED 실제 기록. 엔진 후보에 TRANSFERRED·REALLOCATING 포함 | 0014, `api/match.py`, `_engine/load.py` |
+| MAT-07 | 확정 트리거가 결제 완료·희망 회차 포함 여부도 재검증 | 0014 `validate_table_on_confirm` |
+| SAF-02 | 처리대기함 신고 건과 실제 신고를 report_id로 1:1 연결 | 0014 `link_safety_report` |
+| RET-02 / STA-02 | 홈에 이전 지역·요일 기반 다음 추천 회차, 다음 안내 일정 표시 | `/` |
+| §16 운영 추적 | 회원·참석·결제·회차·식당·처리대기함·신고·테이블 상태 변경을 audit_log에, 설정 변경을 settings_history에 기록. 설정 화면에 변경 이력. CSV 내보내기 | 0014 `audit_changes`, `/admin/export` |
+| §11 | 식당 추가, 재배치 성공률, 매칭 실패 시각·사유 | `/admin/slots`, `/admin/runs` |

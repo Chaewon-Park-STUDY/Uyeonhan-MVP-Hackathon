@@ -8,9 +8,11 @@ const COUPON_LABEL: Record<string, string> = { REVISIT: "재방문", REFERRAL_NE
 import { AnimalBadge } from "@/components/animal-cards";
 import { ProfileSummary } from "@/components/profile-summary";
 import { getMe } from "@/lib/supabase/server";
+import { PendingButton } from "@/components/pending";
+import { deleteAccount } from "./actions";
 
-export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
-  const { saved } = await searchParams;
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
+  const { saved, error } = await searchParams;
   const { supabase, user, profile: p } = await getMe();
   if (!user) redirect("/login?next=/profile");
   if (!p) redirect("/onboarding");
@@ -34,6 +36,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
   return (
     <Page title="내 프로필" back="/">
+      {error && <p className="mb-4 rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{error}</p>}
       {saved && <p className="mb-4 rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">저장했어요.</p>}
 
       <ProfileSummary p={p} />
@@ -112,6 +115,17 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <div className="mt-5">
         <ButtonLink href="/onboarding">프로필 수정하기</ButtonLink>
       </div>
+
+      <details className="mt-8 text-xs text-[#8B6A66]">
+        <summary className="cursor-pointer text-center">회원 탈퇴</summary>
+        <form action={deleteAccount} className="mt-3 space-y-2 rounded-xl border border-[#E9DCD3] bg-white p-4">
+          <p>탈퇴하면 이름·연락처·직업·식사 정보와 로그인 계정이 바로 삭제돼요.</p>
+          <p>참석·피드백 기록은 이름 없이 통계로만 남고, 결제 기록은 법에 따라 5년간 보관돼요.</p>
+          <p>확정된 모임이 남아 있거나 결제한 신청이 매칭을 기다리는 중이면 먼저 정리해야 해요.</p>
+          <label className="flex items-center gap-2 text-[#2E1B1E]"><input type="checkbox" name="confirm" className="accent-[#7A1F2B]" /> 위 내용을 확인했어요</label>
+          <PendingButton className="w-full rounded-lg border border-[#A2412A] py-2 text-[#A2412A]" pendingText="처리 중…">탈퇴하기</PendingButton>
+        </form>
+      </details>
     </Page>
   );
 }

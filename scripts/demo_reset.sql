@@ -60,13 +60,16 @@ begin
     delete from passes ps where ps.user_id = v_alt
       and not exists (select 1 from applications a where a.pass_id = ps.id);
 
-    update applications set match_status = 'ALTERNATIVE_OFFERED', payment_status = 'PAID', assigned_slot_id = null
+    update applications set match_status = 'ALTERNATIVE_OFFERED', application_status = 'SUBMITTED', assigned_slot_id = null,
+           payment_status = case when (select type from passes where id = pass_id) = 'SINGLE' then 'REFUND_AVAILABLE'::payment_status
+                                 else 'PAID'::payment_status end
      where id = v_app;
     update payments set status = 'PAID', refund_rate = null, refund_amount = null, refunded_at = null
      where application_id = v_app;
     update passes set remaining = 1 where id = (select pass_id from applications where id = v_app) and type = 'SINGLE';
     update match_resolutions
        set choice = null, chosen_slot_id = null, resolved_at = null,
+           reason = '나이 차이 8살 이내로 4명 이상 모이는 조합 없음',
            offered_slots = coalesce((select array_agg(id) from (
                               select id from event_slots
                                where is_open and apply_deadline > now()

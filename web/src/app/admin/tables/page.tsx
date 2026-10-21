@@ -4,10 +4,11 @@ import { FEATURE_LABEL, requireAdmin } from "@/lib/admin";
 import { REGION_LABEL, animalOf, byRarity } from "@/lib/labels";
 
 type T = {
-  id: string; status: string; score: number | null; score_breakdown: Record<string, number> | null;
+  id: string; status: string; score: number | null; confirmed_at: string | null;
+  chat_rooms: { id: string; chat_messages: { count: number }[] } | null; score_breakdown: Record<string, number> | null;
   explanation: { shared_interests?: string[] } | null;
   event_slots: { starts_at: string; region_code: string }; venues: { name: string } | null;
-  table_members: { attendance: string; reallocation_count: number;
+  table_members: { user_id: string; attendance: string; reallocation_count: number;
     profiles: { name: string; birth_year: number; gender: string; mbti: string | null; self_traits: string[] | null } }[];
 };
 
@@ -23,16 +24,33 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
   const slotIds = (slots ?? []).filter((s) => new Date(new Date(s.starts_at).getTime() + 9 * 3600e3).toISOString().slice(0, 10) === date).map((s) => s.id);
 
   let q = supabase.from("dining_tables")
-    .select("id, status, score, score_breakdown, explanation, event_slots(starts_at, region_code), venues(name), table_members(attendance, reallocation_count, profiles(name, birth_year, gender, mbti, self_traits))");
+    .select("id, status, score, confirmed_at, score_breakdown, explanation, event_slots(starts_at, region_code), venues(name), chat_rooms(id, chat_messages(count)), table_members(user_id, attendance, reallocation_count, profiles(name, birth_year, gender, mbti, self_traits))");
   q = sp.table ? q.eq("id", sp.table) : q.in("slot_id", slotIds.length ? slotIds : ["00000000-0000-0000-0000-000000000000"]);
   const { data } = await q.order("created_at");
   const tables = (data ?? []) as unknown as T[];
   const year = new Date().getFullYear();
 
+  // PRD 7.2 매칭 결과 필수 표시: 참가자별 희망 일정 충족·이전 만남·차단 충돌·희망 동물 충족·재배치 사유
+  type Detail = { user_id: string; wanted_slot: boolean; met_before: number; conflict: boolean; desired_met: boolean; reallocation_count: number; placement_reason: string | null };
+  const ids = tables.map((t) => t.id);
+  const [details, { data: notis }] = await Promise.all([
+    Promise.all(ids.map((id) => supabase.rpc("admin_table_detail", { p_table: id }).then((r) => [id, (r.data ?? []) as Detail[]] as const))),
+    supabase.from("notifications").select("template, sent_at, last_error, payload").in("payload->>table_id", ids.length ? ids : ["-"]).limit(5000),
+  ]);
+  const detailOf = new Map(details);
+  const NOTI_NAME: Record<string, string> = { MATCH_CONFIRMED: "확정 안내", REMINDER_D1: "전날 리마인드", REMINDER_D0: "3시간 전", FEEDBACK_REQUEST: "피드백 요청" };
+  const sendState = (tid: string) => Object.entries(NOTI_NAME).map(([k, name]) => {
+    const xs = (notis ?? []).filter((n) => (n.payload as { table_id?: string })?.table_id === tid && n.template === k);
+    const sent = xs.filter((n) => n.sent_at).length;
+    const failed = xs.some((n) => !n.sent_at && n.last_error);
+    return { name, sent, total: xs.length, failed };
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-2 text-xl font-bold">테이블</h1>
+        <a href="/admin/export?type=tables" className="order-last ml-auto rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-sm">⬇ CSV 내보내기</a>
         {allDates.map((d) => (
           <Link key={d} href={`/admin/tables?date=${d}`}
                 className={`rounded-full px-3 py-1 text-sm ${d === date && !sp.table ? "bg-[#7A1F2B] text-white" : "border border-[#E9DCD3] bg-white"}`}>{d}</Link>
@@ -61,11 +79,23 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
               <div className="grid gap-5 border-t border-[#EFE3DC] px-5 py-4 md:grid-cols-2">
                 <ul className="space-y-2 text-sm">
                   {t.table_members.map((m, j) => (
-                    <li key={j} className="flex items-center justify-between gap-2">
-                      <span>
-                        <span className="mr-1.5 text-lg">{animalOf(byRarity(m.profiles.self_traits)[0])?.emoji}</span>
-                        <b>{m.profiles.name}</b> · {year - m.profiles.birth_year}세 · {m.profiles.gender === "F" ? "여" : "남"} · {m.profiles.mbti ?? "-"}
-                        {m.reallocation_count > 0 && <span className="ml-1 text-xs text-[#8B6A66]">(다른 지역에서 이동)</span>}
+                    <li key={j} className="flex items-start justify-between gap-2">
+                      <span className="flex flex-col">
+                        <span><span className="mr-1.5 text-lg">{animalOf(byRarity(m.profiles.self_traits)[0])?.emoji}</span>
+                        <b>{m.profiles.name}</b> · {year - m.profiles.birth_year}세 · {m.profiles.gender === "F" ? "여" : "남"} · {m.profiles.mbti ?? "-"}</span>
+                        {(() => {
+                          const d = detailOf.get(t.id)?.find((x) => x.user_id === m.user_id);
+                          if (!d) return null;
+                          return (
+                            <span className="mt-0.5 flex flex-wrap gap-1 text-[11px]">
+                              <span className={d.wanted_slot ? "text-[#2F6B3A]" : "text-[#A2412A]"}>{d.wanted_slot ? "✓ 희망 일정" : "✗ 희망 일정 밖"}</span>
+                              <span className={d.desired_met ? "text-[#2F6B3A]" : "text-[#8B6A66]"}>{d.desired_met ? "✓ 원하는 동물 있음" : "– 원하는 동물 없음"}</span>
+                              <span className={d.met_before ? "text-[#A2412A]" : "text-[#2F6B3A]"}>{d.met_before ? `이전 만남 ${d.met_before}명` : "✓ 모두 처음"}</span>
+                              <span className={d.conflict ? "text-[#A2412A]" : "text-[#2F6B3A]"}>{d.conflict ? "✗ 차단·비선호 충돌" : "✓ 충돌 없음"}</span>
+                              {d.reallocation_count > 0 && <span className="text-[#8A5B00]">재배치 {d.reallocation_count}회{d.placement_reason ? ` · ${d.placement_reason}` : ""}</span>}
+                            </span>
+                          );
+                        })()}
                       </span>
                       <span className={m.attendance === "NO_SHOW" || m.attendance === "CANCELED_LATE" ? "text-[#A2412A]" : "text-[#8B6A66]"}>{ATT[m.attendance] ?? m.attendance}</span>
                     </li>
@@ -87,6 +117,22 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
                         </div>
                       );
                     })}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg bg-[#FBF7F0] px-3 py-2 text-xs text-[#6A4A4C]">
+                    <span>인원 <b>{t.table_members.length}명</b> (4~6명 ✓)</span>
+                    <span>연령 {Math.min(...ages)}~{Math.max(...ages)}세 · 차이 <b>{Math.max(...ages) - Math.min(...ages)}살</b> {Math.max(...ages) - Math.min(...ages) <= 8 ? "✓" : "✗"}</span>
+                    <span>성비 여 {f} : 남 {t.table_members.length - f}</span>
+                    <span>MBTI {t.table_members.map((m) => m.profiles.mbti ?? "-").join(" ")}</span>
+                    <span>자동 확정 {t.confirmed_at ? new Date(t.confirmed_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}</span>
+                    <span>단체방 {t.chat_rooms ? `✓ 메시지 ${t.chat_rooms.chat_messages?.[0]?.count ?? 0}개` : "✗ 없음"}</span>
+                  </div>
+                  <p className="mt-2 text-xs font-semibold">안내 발송 상태</p>
+                  <div className="mt-1 flex flex-wrap gap-1 text-[11px]">
+                    {sendState(t.id).map((x) => (
+                      <span key={x.name} className={`rounded-full px-2 py-0.5 ${x.failed ? "bg-[#FCEDE8] text-[#A2412A]" : x.total && x.sent === x.total ? "bg-[#E3F1E4] text-[#2F6B3A]" : "bg-[#EEE9E4] text-[#6A5F57]"}`}>
+                        {x.name} {x.failed ? "실패" : x.total && x.sent === x.total ? "보냄" : x.total ? `예약 ${x.total - x.sent}` : "-"}
+                      </span>
+                    ))}
                   </div>
                   {(t.explanation?.shared_interests ?? []).length > 0 && (
                     <p className="mt-2 text-[#6A4A4C]">함께 나눌 이야기: <b>{t.explanation!.shared_interests!.join(", ")}</b></p>

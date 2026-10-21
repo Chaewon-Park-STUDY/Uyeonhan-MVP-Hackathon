@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, Page } from "@/components/ui";
-import { notiText } from "@/lib/labels";
+import { type MsgOverride, notiHref, notiTextWith } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 
-type Noti = { id: string; template: string; payload: { table_id?: string; starts_at?: string; venue?: string; region?: string };
+type Noti = { id: string; template: string; payload: { table_id?: string; starts_at?: string; venue?: string; region?: string; match_run_at?: string; deadline?: string; amount?: number };
   sent_at: string; read_at: string | null };
 
 export default async function NotificationsPage() {
@@ -14,6 +14,7 @@ export default async function NotificationsPage() {
   const { data } = await supabase.from("notifications").select("id, template, payload, sent_at, read_at")
     .eq("user_id", profile?.id ?? "").not("sent_at", "is", null).order("sent_at", { ascending: false }).limit(50);
   const list = (data ?? []) as Noti[];
+  const { data: overrides } = await supabase.rpc("message_overrides");
   await supabase.rpc("mark_notifications_read");
 
   return (
@@ -21,8 +22,8 @@ export default async function NotificationsPage() {
       {list.length === 0 && <Card><p className="text-sm text-[#8B6A66]">아직 받은 알림이 없어요.</p></Card>}
       <div className="space-y-2">
         {list.map((n) => {
-          const t = notiText(n.template, n.payload);
-          const href = n.template === "FEEDBACK_REQUEST" ? `/feedback/${n.payload.table_id}` : `/table/${n.payload.table_id}`;
+          const t = notiTextWith(overrides as Record<string, MsgOverride> | null, n.template, n.payload);
+          const href = notiHref(n.template, n.payload);
           return (
             <Link key={n.id} href={href} className="block">
               <Card className={`py-4 ${n.read_at ? "" : "ring-1 ring-[#7A1F2B]"}`}>

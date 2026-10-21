@@ -16,12 +16,13 @@ export default async function ResolvePage({ params, searchParams }: {
 
   const { data: app } = await supabase
     .from("applications")
-    .select("id, match_status, fail_pref, passes(type), match_resolutions(offered_slots)")
+    .select("id, match_status, fail_pref, passes(type), match_resolutions(offered_slots, reason)")
     .eq("id", id).maybeSingle();
   if (!app) notFound();
   if (app.match_status !== "ALTERNATIVE_OFFERED") redirect("/");
 
-  const offered = ((app.match_resolutions as unknown as { offered_slots: string[] } | null)?.offered_slots) ?? [];
+  const res = app.match_resolutions as unknown as { offered_slots: string[]; reason: string | null } | null;
+  const offered = res?.offered_slots ?? [];
   const { data: slots } = offered.length
     ? await supabase.from("event_slots").select("id, starts_at, region_code").in("id", offered).order("starts_at")
     : { data: [] as Slot[] };
@@ -30,7 +31,7 @@ export default async function ResolvePage({ params, searchParams }: {
   return (
     <Page title="다른 일정을 골라 주세요" back="/">
       <p className="-mt-3 mb-5 text-sm text-[#6A4A4C]">
-        이번 회차에는 조건에 맞는 테이블을 만들지 못했어요. 나이 차이·차단 같은 필수 조건은 낮추지 않기 때문이에요.
+        이번 회차에는 조건에 맞는 테이블을 만들지 못했어요{res?.reason ? ` (사유: ${res.reason})` : ""}. 나이 차이·차단 같은 필수 조건은 낮추지 않기 때문이에요.
         결제는 그대로 유지돼요.
       </p>
       <ErrorBox message={error} />

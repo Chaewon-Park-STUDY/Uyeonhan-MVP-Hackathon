@@ -143,7 +143,7 @@ def load_rows() -> tuple[dict, dict, dict | None]:
     rows = {t: fetch_all(t) for t in ("profiles", "event_slots", "application_slots", "venue_availability",
                                       "excluded_pairs", "met_pairs", "match_runs")}
     rows["applications"] = fetch_all(
-        "applications", "select=*&payment_status=eq.PAID&match_status=eq.WAITING&application_status=eq.SUBMITTED")
+        "applications", "select=*&payment_status=eq.PAID&match_status=in.(WAITING,TRANSFERRED,REALLOCATING)&application_status=eq.SUBMITTED")
     settings = {r["key"]: r["value"] for r in fetch_all("settings")}
     snap = fetch_all("model_snapshots", "select=*&order=created_at.desc&limit=1")
     return rows, settings, (snap[0] if snap else None)

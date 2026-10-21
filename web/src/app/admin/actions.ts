@@ -86,3 +86,71 @@ export async function safetyAction(formData: FormData) {
   revalidatePath("/admin/exceptions");
   revalidatePath("/admin");
 }
+
+// 참석 관리: 노쇼 후보 → 참석 / 노쇼 확정
+export async function setAttendance(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.rpc("admin_set_attendance", {
+    p_table: String(formData.get("table")), p_user: String(formData.get("user")), p_status: String(formData.get("status")),
+  });
+  revalidatePath("/admin/attendance");
+}
+
+// 회차 만들기: 날짜·시간·지역·정원·마감·자동 매칭 시각
+export async function createSlot(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const date = String(formData.get("date"));
+  const time = String(formData.get("time") || "19:30");
+  const starts = new Date(`${date}T${time}:00+09:00`);
+  // 기본: 모임 이틀 전 밤 12시(= 전날 00:00)에 신청 마감 + 자동 매칭
+  const dflt = new Date(`${date}T00:00:00+09:00`).getTime() - 24 * 3600e3;
+  const deadline = formData.get("deadline") ? new Date(`${formData.get("deadline")}:00+09:00`) : new Date(dflt);
+  const regions = formData.getAll("region").map(String);
+  const errs: string[] = [];
+  for (const region of regions) {
+    const { error } = await supabase.rpc("admin_create_slot", {
+      p_starts: starts.toISOString(), p_region: region, p_capacity: Number(formData.get("capacity")) || 30,
+      p_deadline: deadline.toISOString(), p_match_run: deadline.toISOString(), p_tables_per_venue: Number(formData.get("tables")) || 2,
+    });
+    if (error) errs.push(error.message);
+  }
+  revalidatePath("/admin/slots");
+  redirect(`/admin/slots?${errs.length ? `err=${encodeURIComponent(errs[0].includes("INVALID_SCHEDULE") ? "마감 시각은 모임 시작 전이어야 해요." : "만들지 못했어요.")}` : "made=1"}`);
+}
+
+// 식당 수용 테이블 수 (모집 중 회차 전체)
+export async function setVenueCapacity(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.rpc("admin_set_venue_capacity", { p_venue: String(formData.get("id")), p_tables: Number(formData.get("tables")) || 1 });
+  revalidatePath("/admin/slots");
+}
+
+// 자동 메시지 문구 수정 (비우면 기본 문구)
+export async function saveMessage(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const code = String(formData.get("code"));
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  const { data } = await supabase.from("settings").select("value").eq("key", "message_overrides").maybeSingle();
+  const cur = { ...((data?.value as Record<string, unknown>) ?? {}) };
+  if (title || body) cur[code] = { title, body };
+  else delete cur[code];
+  await supabase.from("settings").upsert({ key: "message_overrides", value: cur, updated_at: new Date().toISOString() });
+  revalidatePath("/admin/messages");
+  redirect("/admin/messages?saved=1");
+}
+
+// 식당 추가 (PRD §11 식당 재고 관리)
+export async function createVenue(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const s = (k: string) => String(formData.get(k) ?? "").trim();
+  const { data, error } = await supabase.from("venues").insert({
+    name: s("name"), region_code: s("region"), address: s("address"), map_url: s("map_url") || null,
+    price_range: s("price_range") || null, rating: Number(s("rating")) || null,
+    menu_tags: formData.getAll("tags").map(String), is_active: true, is_reservable: true,
+  }).select("id").single();
+  if (error || !data) redirect(`/admin/slots?err=${encodeURIComponent("식당을 추가하지 못했어요. 이름·주소를 확인해 주세요.")}`);
+  await supabase.rpc("admin_set_venue_capacity", { p_venue: data.id, p_tables: Number(s("tables")) || 2 });
+  revalidatePath("/admin/slots");
+  redirect("/admin/slots?venue=1");
+}

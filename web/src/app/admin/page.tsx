@@ -30,6 +30,9 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const dates = (rows ?? []) as Row[];
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   const next = dates.find((d) => d.run_date >= today) ?? dates[dates.length - 1];
+  type Issues = { conflicts: number; no_venue: number; notify_failed: number; refund_failed: number; noshow_candidates: number;
+    late_cancels: number; open_reports: number; waiting_choice: number; reallocated: number; auto_confirmed: number; match_failed: number };
+  const { data: issues } = await supabase.rpc("admin_issue_counts").maybeSingle<Issues>();
   const { data: regionStats } = next
     ? await supabase.rpc("admin_region_stats", { p_date: next.run_date })
     : { data: [] };
@@ -57,6 +60,36 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           <Kpi label="처리 대기" value={openExc ?? 0} sub="처리대기함에서 확인" href="/admin/exceptions" warn={(openExc ?? 0) > 0} />
           <Kpi label="피드백 평균 만족도" value={sum?.avg_table ?? "-"} sub={`${sum?.n_feedback ?? 0}건 · 신고 ${sum?.reports ?? 0}`} />
         </div>
+      )}
+
+      {/* PRD §11 대시보드에 바로 보여야 하는 정보 */}
+      {issues && (
+        <section className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-semibold">처리 현황</h2>
+            <p className="text-xs text-[#8B6A66]">0이면 자동으로 잘 돌아가고 있다는 뜻이에요 · 누르면 해당 화면으로</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+            {([
+              ["자동 확정 테이블", issues.auto_confirmed, "/admin/tables", false],
+              ["재배치로 자리 찾음", issues.reallocated, "/admin/runs", false],
+              ["대체 일정·환불 선택 대기", issues.waiting_choice, "/admin/runs", false],
+              ["조건 충돌 (자동 해결 실패)", issues.conflicts, "/admin/exceptions", true],
+              ["식당 미배정 테이블", issues.no_venue, "/admin/exceptions", true],
+              ["안내 발송 실패", issues.notify_failed, "/admin/messages", true],
+              ["자동 환불 실패", issues.refund_failed, "/admin/payments?status=REFUND_FAILED", true],
+              ["노쇼 후보", issues.noshow_candidates, "/admin/attendance?only=candidates", true],
+              ["당일 취소 (7일)", issues.late_cancels, "/admin/attendance?only=cancel", true],
+              ["미처리 신고", issues.open_reports, "/admin/exceptions", true],
+            ] as [string, number, string, boolean][]).map(([label, v, href, alert]) => (
+              <Link key={label} href={href}
+                    className={`rounded-xl border px-3 py-2.5 hover:border-[#7A1F2B] ${alert && Number(v) > 0 ? "border-[#E8B4A6] bg-[#FCEDE8]" : "border-[#EFE3DC] bg-[#FBF7F0]"}`}>
+                <p className="text-[11px] text-[#6A4A4C]">{label}</p>
+                <p className={`text-xl font-bold ${alert && Number(v) > 0 ? "text-[#A2412A]" : alert ? "text-[#2F6B3A]" : "text-[#7A1F2B]"}`}>{Number(v)}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* 회차별 현황 + 매칭 실행 */}

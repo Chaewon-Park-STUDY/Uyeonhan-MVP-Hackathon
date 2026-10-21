@@ -35,7 +35,7 @@ def build_inputs(profiles, applications, application_slots, event_slots, venue_a
     apps = [
         Application(id=a["id"], person_id=a["user_id"], slot_ids=sorted(by_app[a["id"]]))
         for a in applications
-        if a.get("payment_status") == "PAID" and a.get("match_status") in ("WAITING", None) and by_app[a["id"]]
+        if a.get("payment_status") == "PAID" and a.get("match_status") in ("WAITING", "TRANSFERRED", "REALLOCATING", None) and by_app[a["id"]]
     ]
     ex = {pair_key(r["u1"], r["u2"]) for r in excluded_pairs}
     met = {pair_key(r["u1"], r["u2"]) for r in met_pairs}
