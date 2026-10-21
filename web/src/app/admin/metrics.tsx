@@ -6,7 +6,7 @@ type SupabaseClient = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
 type App = { id: string; user_id: string; application_status: string; payment_status: string; match_status: string; submitted_at: string | null; created_at: string };
 type Mem = { user_id: string; table_id: string; attendance: string; reallocation_count: number; dining_tables: { status: string; event_slots: { starts_at: string } | null } | null };
 
-const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "-");
+const pct = (a: number, b: number) => (b > 0 ? `${Math.min(100, Math.max(0, Math.round((a / b) * 100)))}%` : "-");
 
 export async function Metrics({ supabase }: { supabase: SupabaseClient }) {
   const [{ data: a }, { data: m }, { data: res }, { data: fb }, { data: exc }, { data: tbl }] = await Promise.all([
@@ -43,11 +43,13 @@ export async function Metrics({ supabase }: { supabase: SupabaseClient }) {
   const fbs = (fb ?? []) as { user_id: string; created_at: string }[];
   const fbUsers = new Map<string, string>();
   for (const f of fbs) if (!fbUsers.has(f.user_id) || f.created_at < fbUsers.get(f.user_id)!) fbUsers.set(f.user_id, f.created_at);
+  const fbAmongAttended = [...attendCount.keys()].filter((u) => fbUsers.has(u)).length;
   const nextApplied = [...fbUsers.entries()].filter(([u, t]) => submitted.some((x) => x.user_id === u && (x.submitted_at ?? x.created_at) > t)).length;
 
   // 운영 효율
   const tables = (tbl ?? []).length;
-  const excTables = new Set(excs.map((e) => e.table_id).filter(Boolean)).size;
+  const confirmedIds = new Set(((tbl ?? []) as { id: string }[]).map((t) => t.id));
+  const excTables = new Set(excs.map((e) => e.table_id).filter((id): id is string => !!id && confirmedIds.has(id))).size;   // 확정 테이블 중 처리대기가 있었던 것만
   const resolved = excs.filter((e) => e.resolved_at);
   const avgMin = resolved.length
     ? Math.round(resolved.reduce((s, e) => s + (new Date(e.resolved_at!).getTime() - new Date(e.created_at).getTime()), 0) / resolved.length / 60e3) : null;
@@ -66,7 +68,7 @@ export async function Metrics({ supabase }: { supabase: SupabaseClient }) {
     ] },
     { title: "반복 참여", color: "#3B6EA8", items: [
       ["재방문율", pct(repeaters, attendCount.size), `참석자 ${attendCount.size}명 중 2회 이상 ${repeaters}명`],
-      ["피드백 응답률", pct(fbUsers.size, new Set(attended.map((x) => x.user_id)).size), `참석자 중 피드백 ${fbUsers.size}명`],
+      ["피드백 응답률", pct(fbAmongAttended, attendCount.size), `참석자 ${attendCount.size}명 중 피드백 ${fbAmongAttended}명`],
       ["다음 일정 전환율", pct(nextApplied, fbUsers.size), `피드백 후 다시 신청 ${nextApplied}명`],
     ] },
     { title: "운영 효율", color: "#B45309", items: [
