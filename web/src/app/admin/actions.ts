@@ -61,7 +61,7 @@ export async function saveSettings(formData: FormData) {
   const total = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
   for (const k of Object.keys(weights)) weights[k] = Math.round((weights[k] / total) * 1000) / 1000;   // 합 1로 정규화
 
-  const matching = { ...cur.matching, weights, min_score: num("min_score", 0.45), max_age_gap: num("max_age_gap", 8),
+  const matching = { ...cur.matching, weights, min_score: (() => { const v = num("min_score", 45); return v > 1 ? v / 100 : v; })(), max_age_gap: num("max_age_gap", 8),
     policy: formData.get("policy") === "thompson" ? "thompson" : "mean" };
   const demo = { ...cur.demo, feedback_anytime: formData.get("demo") === "on" };
   const nss = cur.no_show_sanction ?? {};

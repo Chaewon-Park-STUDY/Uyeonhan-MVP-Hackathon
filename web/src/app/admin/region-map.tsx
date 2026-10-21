@@ -75,7 +75,7 @@ export function RegionMap({ regions, demand, threshold, dateLabel }: {
         })}
       </svg>
       <p className="mt-1 text-xs text-[#8B6A66]">
-        {dateLabel} 회차 기준 · 빨간 원 숫자 = 신청자 수(클수록 많음) · 점선 원 = 서울 밖 대기 명단
+        {dateLabel} 회차 기준 · 빨간 원 숫자 = 그 지역을 고른 신청자 수(여러 지역을 고르면 각 지역에 셈) · 점선 원 = 서울 밖 대기 명단
       </p>
     </div>
   );

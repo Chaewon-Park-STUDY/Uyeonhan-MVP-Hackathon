@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { ButtonLink, Card, Page } from "@/components/ui";
-import { FAIL_PREFS, PASSES, animalOf, byRarity, fmtDate } from "@/lib/labels";
+import { FAIL_PREFS, PASSES, REGION_LABEL, animalOf, byRarity, fmtDate } from "@/lib/labels";
+
+const ATTEND_LABEL: Record<string, string> = { SCHEDULED: "예정", ATTENDED: "참석", NO_SHOW: "노쇼", CANCELED_EARLY: "사전 취소", CANCELED_LATE: "당일 취소" };
 
 const COUPON_LABEL: Record<string, string> = { REVISIT: "재방문", REFERRAL_NEW: "친구 초대", REFERRAL_INVITER: "친구 초대", LAST_MINUTE: "마감 할인", NO_SHOW_COMPENSATION: "보상" };
 import { AnimalBadge } from "@/components/animal-cards";
@@ -14,10 +16,19 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   if (!p) redirect("/onboarding");
 
   const nowIso = new Date().toISOString();
-  const [{ data: passes }, { data: coupons }] = p ? await Promise.all([
+  const [{ data: passes }, { data: coupons }, { data: mine }, { data: fbs }] = await Promise.all([
     supabase.from("passes").select("type, remaining, expires_at, created_at").order("created_at", { ascending: false }).limit(5),
     supabase.from("coupons").select("kind, discount_rate, expires_at").is("used_at", null).gt("expires_at", nowIso),
-  ]) : [{ data: [] }, { data: [] }];
+    // 참가 이력 (RET-01): 내가 들어갔던 확정 테이블
+    supabase.from("table_members").select("table_id, attendance, dining_tables(status, event_slots(starts_at, region_code))")
+      .eq("user_id", p.id),
+    supabase.from("feedback").select("table_id").eq("user_id", p.id),
+  ]);
+  type Hist = { table_id: string; attendance: string; dining_tables: { status: string; event_slots: { starts_at: string; region_code: string } | null } | null };
+  const fbDone = new Set((fbs ?? []).map((f) => f.table_id));
+  const history = ((mine ?? []) as unknown as Hist[])
+    .filter((h) => h.dining_tables?.status === "CONFIRMED" && h.dining_tables.event_slots)
+    .sort((a, b) => b.dining_tables!.event_slots!.starts_at.localeCompare(a.dining_tables!.event_slots!.starts_at));
   const clean = (xs: string[] | null) => (xs ?? []).map((x) => x.replace(/^기타:/, ""));
   const failPref = FAIL_PREFS.find((f) => f.value === p.default_fail_pref)?.label;
 
@@ -55,6 +66,32 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </li>
           ))}
         </ul>
+      </Card>
+
+      <Card className="mt-4">
+        <p className="mb-2 text-xs text-[#8B6A66]">참가 이력</p>
+        {history.length === 0 ? <p className="text-sm">아직 참가한 모임이 없어요.</p> : (
+          <ul className="space-y-2 text-sm">
+            {history.map((h) => {
+              const s = h.dining_tables!.event_slots!;
+              const past = s.starts_at < nowIso;
+              const att = h.attendance === "SCHEDULED" ? (past ? "참석 확인 중" : "예정") : ATTEND_LABEL[h.attendance] ?? h.attendance;
+              return (
+                <li key={h.table_id} className="flex flex-wrap items-center justify-between gap-1">
+                  <a href={`/table/${h.table_id}`} className="underline-offset-2 hover:underline">
+                    🍽️ {fmtDate(s.starts_at).split(" ").slice(0, 3).join(" ")} · {REGION_LABEL[s.region_code]}
+                  </a>
+                  <span className="flex gap-1 text-xs">
+                    <span className="rounded-full bg-[#F4E4DE] px-2 py-0.5">{att}</span>
+                    <span className={`rounded-full px-2 py-0.5 ${fbDone.has(h.table_id) ? "bg-[#E3F1E4] text-[#2F6B3A]" : "bg-[#F4ECE6] text-[#8B6A66]"}`}>
+                      피드백 {fbDone.has(h.table_id) ? "제출" : "미제출"}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Card>
 
       <Card className="mt-4 space-y-4">

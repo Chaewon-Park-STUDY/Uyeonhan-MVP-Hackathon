@@ -52,7 +52,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       {next && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <Kpi label={`${next.run_date} 신청`} value={next.apps_total} sub={`결제 ${next.apps_paid} · 대기 ${next.apps_pending}`} />
-          <Kpi label="확정 테이블" value={next.confirmed_tables} sub={`${next.confirmed_people}명 배치`} />
+          <Kpi label="확정 테이블" value={next.confirmed_tables} sub={`${next.confirmed_people}명 배치${next.apps_paid ? ` · 자동 확정률 ${Math.round((next.confirmed_people / next.apps_paid) * 100)}%` : ""}`} />
           <Kpi label="대체 회차 제안" value={next.offered} sub="미리 고른 선택지 자동 적용" />
           <Kpi label="처리 대기" value={openExc ?? 0} sub="처리대기함에서 확인" href="/admin/exceptions" warn={(openExc ?? 0) > 0} />
           <Kpi label="피드백 평균 만족도" value={sum?.avg_table ?? "-"} sub={`${sum?.n_feedback ?? 0}건 · 신고 ${sum?.reports ?? 0}`} />

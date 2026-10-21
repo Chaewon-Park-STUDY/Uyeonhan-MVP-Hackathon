@@ -11,7 +11,6 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const m = cfg.matching ?? {};
   const w = (m.weights ?? {}) as Record<string, number>;
   const comp = ((cfg.no_show_sanction?.compensation ?? {}) as { enabled?: boolean });
-  const refund = cfg.refund_policy ?? {};
   const pricing = cfg.pricing ?? {};
 
   return (
@@ -19,18 +18,18 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       <form action={saveSettings} className="space-y-4">
         {saved && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">저장했어요. 다음 매칭부터 적용돼요.</p>}
         <Card>
-          <Label hint="어떤 기준을 더 중요하게 볼지 정해요. 합이 1이 되도록 자동으로 맞춰요. 피드백이 쌓이면 실제 만족도에 맞게 자동으로 보정돼요">매칭 기준 비중</Label>
+          <Label hint="어떤 기준을 더 중요하게 볼지 정해요. 합이 100%가 되도록 자동으로 맞춰요. 피드백이 쌓이면 실제 만족도에 맞게 자동으로 보정돼요">매칭 기준 비중</Label>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {Object.entries(FEATURE_LABEL).map(([k, label]) => (
               <label key={k} className="text-xs">
-                <span className="mb-1 block text-[#6A4A4C]">{label}</span>
-                <input name={`w_${k}`} type="number" step="0.05" min="0" max="1" defaultValue={w[k] ?? 0} className={`${inputCls} py-2`} />
+                <span className="mb-1 block text-[#6A4A4C]">{label} (%)</span>
+                <input name={`w_${k}`} type="number" step="5" min="0" max="100" defaultValue={Math.round((w[k] ?? 0) * 100)} className={`${inputCls} py-2`} />
               </label>
             ))}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">테이블 확정 최소 점수 (0~1, 낮추면 더 많이 확정)</span>
-              <input name="min_score" type="number" step="0.05" min="0" max="1" defaultValue={Number(m.min_score ?? 0.45)} className={`${inputCls} py-2`} /></label>
+            <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">테이블 확정 최소 점수 (100점 만점, 낮추면 더 많이 확정)</span>
+              <input name="min_score" type="number" step="5" min="0" max="100" defaultValue={Math.round(Number(m.min_score ?? 0.45) * 100)} className={`${inputCls} py-2`} /></label>
             <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">최대 나이 차이 (필수 조건)</span>
               <input name="max_age_gap" type="number" min="3" max="20" defaultValue={Number(m.max_age_gap ?? 8)} className={`${inputCls} py-2`} /></label>
           </div>
@@ -67,7 +66,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <p>1회권 {Number((pricing.SINGLE as { price?: number })?.price ?? 9900).toLocaleString()}원 · 멤버십 1/3/6개월</p>
           <p className="mt-1">환불: 모임 주 화요일 24:00까지 100%, 이후 0% · 매칭 실패 시 100% 또는 이동</p>
           <p className="mt-1">노쇼 1점 · 당일 취소 0.5점 · 90일 2점 → 30일 제한</p>
-          <p className="mt-2 text-[11px] text-[#8B6A66]">기준: {String((refund as { cutoff?: string }).cutoff ?? "")}</p>
+          
         </Card>
       </div>
     </div>

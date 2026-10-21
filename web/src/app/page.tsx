@@ -163,6 +163,12 @@ function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: In
           {slots.map((s) => (
             <p key={s.id}>· {fmtDate(s.starts_at)} {REGION_LABEL[s.region_code]}</p>
           ))}
+          {a.match_status === "ALTERNATIVE_OFFERED" && (
+            <p className="mt-2 rounded-xl bg-[#FCEDE8] px-3 py-2 text-xs text-[#A2412A]">
+              이 회차에서는 조건(나이 차이·인원 등)에 맞는 테이블을 만들지 못했어요. 결제는 그대로예요.
+              다른 일정으로 옮기기 · 이용권 보관 · 전액 환불 중에서 골라 주세요.
+            </p>
+          )}
         </div>
       )}
 
