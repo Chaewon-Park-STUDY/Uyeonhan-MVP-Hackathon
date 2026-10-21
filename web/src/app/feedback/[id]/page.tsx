@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { ButtonLink, Card, ErrorBox, Label, Page, Submit, inputCls } from "@/components/ui";
-import { REGION_LABEL, fmtDate, mainAnimal } from "@/lib/labels";
+import { REGION_LABEL, fmtDate, mainAnimal, venueName } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 import { submitFeedback } from "./actions";
 
@@ -44,7 +44,7 @@ export default async function FeedbackPage({ params, searchParams }: {
   return (
     <Page title="오늘 식탁은 어땠나요?" back={`/table/${id}`}>
       <p className="-mt-3 mb-5 text-sm text-[#6A4A4C]">
-        {fmtDate(info.starts_at)} · {info.venue_name ?? REGION_LABEL[info.region_code]}
+        {fmtDate(info.starts_at)} · {info.venue_name ? venueName(info.venue_name) : REGION_LABEL[info.region_code]}
         <br />1분이면 끝나요. 남겨 주신 답은 다음 매칭을 더 잘 맞추는 데 쓰여요.
       </p>
       {st.demo && <p className="mb-4 rounded-xl bg-[#F4E4DE] px-3 py-2 text-xs">시연 모드: 모임 전이라도 피드백을 남겨 볼 수 있어요.</p>}

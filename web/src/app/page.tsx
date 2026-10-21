@@ -4,7 +4,7 @@ import { DiamondRule, WaxSeal } from "@/components/brand";
 import { Invitation } from "@/components/invitation";
 import { TableIllustration } from "@/components/table-illustration";
 import { ProfileSummary } from "@/components/profile-summary";
-import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, mainAnimal, fmtDate, fmtDeadline, won } from "@/lib/labels";
+import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, mainAnimal, fmtDate, fmtDeadline, venueName, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 import { CalendarBoard, type SlotStat } from "@/components/schedule-board";
 import { PendingButton } from "@/components/pending";
@@ -203,7 +203,7 @@ function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: In
             </ul>
           )}
           {a.table_members?.dining_tables?.venues?.name && (
-            <p className="text-sm">📍 {a.table_members.dining_tables.venues.name}</p>
+            <p className="text-sm">📍 {venueName(a.table_members.dining_tables.venues.name)}</p>
           )}
           <ButtonLink href={`/table/${a.table_members?.table_id}`}>단체방 · 식당 안내 보기</ButtonLink>
           <p className="text-center text-xs text-[#8B6A66]">
@@ -244,7 +244,13 @@ function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: In
       )}
       {a.match_status === "CONFIRMED" && assigned && assigned.starts_at > new Date().toISOString() && (
         <p className="mt-2 text-center text-xs text-[#8B6A66]">
-          다음 안내: {fmtDate(new Date(new Date(assigned.starts_at).getTime() - 86400e3).toISOString())} 전날 리마인드 (시간·장소·예약명)
+          {(() => {
+            // 아직 안 지난 다음 안내 하나만
+            const t0 = new Date(assigned.starts_at).getTime(), now = Date.now();
+            const next = [[t0 - 86400e3, "전날 리마인드 (시간·장소·예약명)"], [t0 - 3 * 3600e3, "3시간 전 알림"], [t0, "모임 시작 · 아이스브레이킹 게임"]]
+              .find(([t]) => (t as number) > now);
+            return next ? `다음 안내: ${fmtDate(new Date(next[0] as number).toISOString())} ${next[1]}` : "";
+          })()}
         </p>
       )}
       {a.match_resolutions?.choice === "MOVE_DATE" || a.match_resolutions?.choice === "MOVE_REGION" ? (

@@ -212,6 +212,9 @@ export const notiHref = (template: string, p: { table_id?: string; application_i
     : template === "MATCH_FAILED" && p.application_id ? `/resolve/${p.application_id}`
     : p.table_id ? `/table/${p.table_id}` : template === "NEXT_RECRUIT" ? "/apply" : "/";
 
+// 시연용 가상 식당 이름의 "[샘플]" 표시는 참가자 화면에서 빼고 보여 줌
+export const venueName = (n?: string | null) => (n ?? "").replace(/\[샘플\]\s*/g, "");
+
 export const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
 // DB 함수가 던지는 오류 코드 → 안내 문구

@@ -229,7 +229,7 @@ function BotBundle({ items, openLast }: { items: Msg[]; openLast: boolean }) {
                 </button>
                 {isOpen && (
                   <p className="whitespace-pre-line px-4 pb-3 text-sm leading-relaxed text-[#2E1B1E]">
-                    {m.content.replace(/^(📍|📌|🎲)\s*/, "")}
+                    {m.content.replace(/^(📍|📌|🎲)\s*/, "").replace(/\[샘플\]\s*/g, "")}
                   </p>
                 )}
               </div>

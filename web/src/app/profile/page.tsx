@@ -4,6 +4,17 @@ import { FAIL_PREFS, PASSES, REGION_LABEL, animalOf, byRarity, fmtDate } from "@
 
 const ATTEND_LABEL: Record<string, string> = { SCHEDULED: "예정", ATTENDED: "참석", NO_SHOW: "노쇼", CANCELED_EARLY: "사전 취소", CANCELED_LATE: "당일 취소" };
 
+// 1회권: 신청에 쓰였으면 "○월 ○일 모임에 사용", 보관 중이면 "남은 1회"
+type PassRow = { id: string; type: string; remaining: number | null; expires_at: string | null; created_at: string;
+  applications: { application_status: string; match_status: string; payment_status: string; application_slots: { event_slots: { starts_at: string } | null }[] }[] };
+function singleState(x: PassRow) {
+  const used = x.applications.find((a) => a.application_status === "SUBMITTED" && !["NO_MATCH"].includes(a.match_status)
+    && !a.payment_status.startsWith("REFUND"));
+  if (!used) return `남은 ${x.remaining}회 · 다음 신청에 바로 사용`;
+  const first = used.application_slots.map((s) => s.event_slots?.starts_at).filter(Boolean).sort()[0];
+  return first ? `${fmtDate(first).split(" ").slice(0, 3).join(" ")} 모임에 사용 중` : "신청에 사용 중";
+}
+
 const COUPON_LABEL: Record<string, string> = { REVISIT: "재방문", REFERRAL_NEW: "친구 초대", REFERRAL_INVITER: "친구 초대", LAST_MINUTE: "마감 할인", NO_SHOW_COMPENSATION: "보상" };
 import { AnimalBadge } from "@/components/animal-cards";
 import { ProfileSummary } from "@/components/profile-summary";
@@ -19,7 +30,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
   const nowIso = new Date().toISOString();
   const [{ data: passes }, { data: coupons }, { data: mine }, { data: fbs }] = await Promise.all([
-    supabase.from("passes").select("type, remaining, expires_at, created_at").order("created_at", { ascending: false }).limit(5),
+    supabase.from("passes").select("id, type, remaining, expires_at, created_at, applications(application_status, match_status, payment_status, application_slots(event_slots(starts_at)))").order("created_at", { ascending: false }).limit(5),
     supabase.from("coupons").select("kind, discount_rate, expires_at").is("used_at", null).gt("expires_at", nowIso),
     // 참가 이력 (RET-01): 내가 들어갔던 확정 테이블
     supabase.from("table_members").select("table_id, attendance, dining_tables(status, event_slots(starts_at, region_code))")
@@ -56,10 +67,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         <p className="mb-2 text-xs text-[#8B6A66]">내 이용권 · 쿠폰</p>
         {(passes ?? []).length === 0 && (coupons ?? []).length === 0 && <p className="text-sm">아직 없어요.</p>}
         <ul className="space-y-1.5 text-sm">
-          {(passes ?? []).filter((x) => x.type !== "SINGLE" ? x.expires_at && x.expires_at > nowIso : (x.remaining ?? 0) > 0).map((x, i) => (
+          {((passes ?? []) as unknown as PassRow[]).filter((x) => x.type !== "SINGLE" ? x.expires_at && x.expires_at > nowIso : (x.remaining ?? 0) > 0).map((x, i) => (
             <li key={i} className="flex justify-between">
               <span>🎟️ {PASSES.find((q) => q.value === x.type)?.label ?? x.type}</span>
-              <span className="text-[#6A4A4C]">{x.type === "SINGLE" ? `남은 ${x.remaining}회` : `${fmtDate(x.expires_at!).split(" ").slice(0, 3).join(" ")}까지`}</span>
+              <span className="text-[#6A4A4C]">{x.type === "SINGLE" ? singleState(x) : `${fmtDate(x.expires_at!).split(" ").slice(0, 3).join(" ")}까지`}</span>
             </li>
           ))}
           {(coupons ?? []).map((c, i) => (

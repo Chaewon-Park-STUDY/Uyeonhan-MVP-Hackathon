@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { ButtonLink, Card, Page } from "@/components/ui";
 import { PendingButton } from "@/components/pending";
-import { REGION_LABEL, mainAnimal, fmtDate } from "@/lib/labels";
+import { REGION_LABEL, mainAnimal, fmtDate, venueName } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
 import { cancelSeat, checkIn, moreTopics } from "./actions";
 import { ChatRoom, type Msg } from "./chat";
@@ -47,7 +47,7 @@ export default async function TablePage({ params, searchParams }: { params: Prom
         <div className="mt-3 rounded-xl bg-[#FBF1EC] px-3 py-2.5 text-sm">
           {info.venue_name ? (
             <>
-              <p className="font-semibold">📍 {info.venue_name}</p>
+              <p className="font-semibold">📍 {venueName(info.venue_name)} {info.venue_name.includes("[샘플]") && <span className="text-[11px] font-normal text-[#8B6A66]">(시연용 가상 식당)</span>}</p>
               <p className="text-xs text-[#6A4A4C]">{info.venue_address}</p>
               <p className="mt-1 text-xs text-[#6A4A4C]">
                 ⏰ {new Date(info.starts_at).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" })}까지 모여요 · 🪑 예약명 &ldquo;우연한 식탁&rdquo;
