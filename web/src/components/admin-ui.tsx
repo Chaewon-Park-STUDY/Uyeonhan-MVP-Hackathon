@@ -67,3 +67,39 @@ export function TableWrap({ children, min = 760 }: { children: ReactNode; min?: 
 
 export const th = "py-2 pr-3 text-left text-xs font-medium text-[#8B6A66]";
 export const td = "border-t border-[#F4ECE6] py-2 pr-3 align-top";
+
+// 쪽 나누기: 긴 목록은 한 쪽에 20개씩
+export function Pager({ base, page, total, size = 20, keep = {} }: {
+  base: string; page: number; total: number; size?: number; keep?: Record<string, string | undefined>;
+}) {
+  const pages = Math.max(1, Math.ceil(total / size));
+  if (pages <= 1) return null;
+  const href = (p: number) => {
+    const q = new URLSearchParams(Object.entries({ ...keep, page: String(p) }).filter(([, x]) => x) as [string, string][]);
+    return `${base}?${q.toString()}`;
+  };
+  const nums = Array.from({ length: pages }, (_, i) => i + 1).filter((n) => n === 1 || n === pages || Math.abs(n - page) <= 2);
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1.5 text-sm">
+      {page > 1 && <Link href={href(page - 1)} className="rounded-full border border-[#E9DCD3] bg-white px-3 py-1">← 이전</Link>}
+      {nums.map((n, i) => (
+        <span key={n} className="flex items-center gap-1.5">
+          {i > 0 && n - nums[i - 1] > 1 && <span className="text-[#B7A3A0]">…</span>}
+          <Link href={href(n)} className={`rounded-full px-3 py-1 ${n === page ? "bg-[#7A1F2B] text-white" : "border border-[#E9DCD3] bg-white"}`}>{n}</Link>
+        </span>
+      ))}
+      {page < pages && <Link href={href(page + 1)} className="rounded-full border border-[#E9DCD3] bg-white px-3 py-1">다음 →</Link>}
+      <span className="ml-2 text-xs text-[#8B6A66]">{total}건 중 {(page - 1) * size + 1}~{Math.min(total, page * size)}</span>
+    </div>
+  );
+}
+
+// 필터 묶음: 왼쪽에 이름, 오른쪽에 버튼들
+export function FilterRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-14 shrink-0 text-xs font-semibold text-[#8B6A66]">{label}</span>
+      {children}
+    </div>
+  );
+}

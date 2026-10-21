@@ -15,8 +15,8 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const pricing = cfg.pricing ?? {};
   // §16 운영 추적: 최근 변경 이력
   const [{ data: logs }, { data: shist }] = await Promise.all([
-    supabase.from("audit_log").select("entity, entity_id, field, old_value, new_value, actor, at").neq("entity", "chat_messages").order("at", { ascending: false }).limit(40),
-    supabase.from("settings_history").select("key, actor, at").order("at", { ascending: false }).limit(10),
+    supabase.from("audit_log").select("entity, entity_id, field, old_value, new_value, actor, at").neq("entity", "chat_messages").order("at", { ascending: false }).limit(300),
+    supabase.from("settings_history").select("key, actor, at").order("at", { ascending: false }).limit(50),
   ]);
 
   // 이력에 나오는 신청·회원의 이름
@@ -89,7 +89,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         </Card>
       </div>
     </div>
-    <HistoryCard logs={(logs ?? []) as Log[]} settings={(shist ?? []) as { key: string; actor: string; at: string }[]} nameOf={nameOf} />
+    <HistoryCard logs={(logs ?? []) as Log[]} settings={(shist ?? []) as { key: string; actor: string; at: string }[]} names={Object.fromEntries(nameOf)} />
     </div>
   );
 }

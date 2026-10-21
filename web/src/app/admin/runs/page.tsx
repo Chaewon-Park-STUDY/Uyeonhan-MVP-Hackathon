@@ -14,7 +14,22 @@ type Moved = { user_id: string; reallocation_count: number; placement_reason: st
   dining_tables: { status: string; event_slots: { starts_at: string; region_code: string } | null } | null };
 
 // PRD §11 자동 매칭 모니터: 실행 결과, 재배치 내역, 자동 확정 테이블, 매칭 실패자
-export default async function Runs() {
+// 실패 사유 분류 ("분류: 설명")
+const CAT_STYLE: Record<string, string> = {
+  "인원 부족": "border-[#2F6FB3] bg-[#DBE8F6] text-[#1F4F86]",
+  "나이 조건": "border-[#C98A12] bg-[#F8EBCB] text-[#7A5306]",
+  "제외 관계": "border-[#A2412A] bg-[#FCEDE8] text-[#A2412A]",
+  "만족도 기준 미달": "border-[#7A5BB5] bg-[#ECE4F7] text-[#4F3A80]",
+  "기타": "border-[#B7A3A0] bg-[#EEE9E4] text-[#6A5F57]",
+};
+const splitReason = (r?: string | null): [string, string] => {
+  if (!r) return ["기타", "사유 기록 없음"];
+  const i = r.indexOf(":");
+  return i > 0 ? [r.slice(0, i).trim(), r.slice(i + 1).trim()] : ["기타", r];
+};
+
+export default async function Runs({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
+  const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const [{ data: runs }, { data: failed }, { data: moved }] = await Promise.all([
     supabase.from("match_runs").select("id, run_key, algorithm_version, started_at, finished_at, error, stats").order("started_at", { ascending: false }).limit(20),
@@ -29,6 +44,9 @@ export default async function Runs() {
   const num = (r: Run, k: string) => (typeof r.stats?.[k] === "number" ? (r.stats[k] as number) : 0);
   const totalApps = list.reduce((a, r) => a + num(r, "applications"), 0);
   const totalPlaced = list.reduce((a, r) => a + num(r, "placed"), 0);
+  const catOf = (f: Failed) => splitReason(f.match_resolutions?.reason)[0];
+  const cats = [...new Set(fails.map(catOf))];
+  const shownFails = sp.reason ? fails.filter((f) => catOf(f) === sp.reason) : fails;
   const choice = (c: string | null) => (c && CHOICE[c]) || "참가자 선택 대기";
 
   return (
@@ -49,7 +67,7 @@ export default async function Runs() {
         <h2 className="mb-2 font-semibold">실행 기록</h2>
         <TableWrap min={860}>
           <thead><tr><th className={th}>모임일</th><th className={th}>실행 시각</th><th className={th}>대상</th><th className={th}>확정 테이블</th>
-            <th className={th}>배치</th><th className={th}>재배치로 배치</th><th className={th}>점수 미달 해체→구제</th><th className={th}>실패</th><th className={th}>예상 만족도</th><th className={th}>상태</th></tr></thead>
+            <th className={th}>자리 배정</th><th className={th}>재배치로 배정</th><th className={th}>다시 짠 인원 → 자리 찾음</th><th className={th}>실패</th><th className={th}>예상 만족도</th><th className={th}>상태</th></tr></thead>
           <tbody>
             {list.length === 0 && <tr><td className={td} colSpan={10}>아직 실행 기록이 없어요.</td></tr>}
             {list.map((r) => (
@@ -60,7 +78,7 @@ export default async function Runs() {
                 <td className={td}>{num(r, "tables_confirmed")}개</td>
                 <td className={td}>{num(r, "placed")}명</td>
                 <td className={td}>{num(r, "reallocated_placed")}명</td>
-                <td className={td}>{num(r, "dissolved_low_score")} → {num(r, "dissolved_rescued")}</td>
+                <td className={td}>{num(r, "dissolved_low_score")}명 → {num(r, "dissolved_rescued")}명</td>
                 <td className={td}>{num(r, "failed") || num(r, "unmatched")}명</td>
                 <td className={td}>{r.stats?.mean_pred != null ? `${r.stats.mean_pred}점` : "-"}</td>
                 <td className={td}>{r.error ? <Pill tone="warn">오류</Pill> : r.finished_at ? <Pill tone="ok">완료</Pill> : <Pill tone="wait">실행 중</Pill>}</td>
@@ -68,9 +86,14 @@ export default async function Runs() {
             ))}
           </tbody>
         </TableWrap>
+        <ul className="mt-2 space-y-0.5 text-xs text-[#8B6A66]">
+          <li>· <b>재배치로 배정</b>: 처음 고른 지역에 자리가 없어, 같은 날 다른 희망 지역이나 다른 희망 날짜로 옮겨 확정된 사람</li>
+          <li>· <b>다시 짠 인원 → 자리 찾음</b>: 예상 만족도가 최소 점수보다 낮아 확정하지 않고 풀어 다시 짠 테이블의 인원, 그중 다른 테이블에 들어간 사람 수</li>
+          <li>· <b>실패</b>: 어떤 테이블에도 못 들어가 다른 일정·이용권 보관·환불을 고르게 된 사람</li>
+        </ul>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="space-y-5">
         <section>
           <h2 className="mb-2 font-semibold">재배치 내역 <span className="text-sm font-normal text-[#8B6A66]">처음 조합에서 빠져 다른 테이블로 옮겨 확정된 사람</span></h2>
           <TableWrap min={420}>
@@ -89,23 +112,38 @@ export default async function Runs() {
           </TableWrap>
         </section>
         <section>
-          <h2 className="mb-2 font-semibold">매칭 실패자 <span className="text-sm font-normal text-[#8B6A66]">다른 일정·이용권 보관·환불 중 선택</span></h2>
-          <TableWrap min={420}>
-            <thead><tr><th className={th}>이름</th><th className={th}>희망 회차</th><th className={th}>실패 시각 · 사유</th><th className={th}>제안</th><th className={th}>처리</th></tr></thead>
+          <h2 className="mb-2 font-semibold">매칭 실패자 <span className="text-sm font-normal text-[#8B6A66]">사유별로 골라 볼 수 있어요</span></h2>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {[["", "전체", fails.length] as [string, string, number], ...cats.map((c) => [c, c, fails.filter((f) => catOf(f) === c).length] as [string, string, number])].map(([v, label, n]) => (
+              <Link key={v || "all"} href={v ? `/admin/runs?reason=${encodeURIComponent(v)}` : "/admin/runs"}
+                    className={`rounded-full px-3 py-1 text-sm ${(sp.reason ?? "") === v ? "bg-[#7A1F2B] text-white" : `border ${CAT_STYLE[label] ?? "border-[#E9DCD3] bg-white"}`}`}>
+                {label} {n}
+              </Link>
+            ))}
+          </div>
+          <TableWrap min={760}>
+            <thead><tr><th className={th}>이름</th><th className={th}>희망 회차</th><th className={th}>실패 사유</th><th className={th}>실패 시각</th><th className={th}>제안 회차</th><th className={th}>처리</th></tr></thead>
             <tbody>
-              {fails.length === 0 && <tr><td className={td} colSpan={5}>매칭 실패자가 없어요.</td></tr>}
-              {fails.map((f) => (
-                <tr key={f.id}>
-                  <td className={td}>{f.profiles.name}</td>
-                  <td className={`${td} text-xs`}>{f.application_slots.filter((s) => s.event_slots).map((s, i) => (
-                    <div key={i}>{kstDate(s.event_slots!.starts_at).slice(5)} {REGION_LABEL[s.event_slots!.region_code]}</div>))}</td>
-                  <td className={`${td} text-xs`}>{shortDt(f.match_resolutions?.created_at)}<div className="text-[#8B6A66]">{f.match_resolutions?.reason ?? "-"}</div></td>
-                  <td className={td}>{f.match_resolutions?.offered_slots.length ?? 0}개</td>
-                  <td className={td}>
-                    <Pill tone={f.match_resolutions?.resolved_at ? "ok" : "wait"}>{f.match_resolutions?.resolved_at ? choice(f.match_resolutions.choice) : "선택 대기"}</Pill>
-                  </td>
-                </tr>
-              ))}
+              {shownFails.length === 0 && <tr><td className={td} colSpan={6}>해당하는 사람이 없어요.</td></tr>}
+              {shownFails.map((f) => {
+                const [cat, detail] = splitReason(f.match_resolutions?.reason);
+                return (
+                  <tr key={f.id}>
+                    <td className={`${td} font-medium`}>{f.profiles.name}</td>
+                    <td className={`${td} text-xs`}>{f.application_slots.filter((s) => s.event_slots).map((s, i) => (
+                      <div key={i}>{kstDate(s.event_slots!.starts_at).slice(5)} {REGION_LABEL[s.event_slots!.region_code]}</div>))}</td>
+                    <td className={td}>
+                      <span className={`mr-1.5 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${CAT_STYLE[cat] ?? "border-[#E9DCD3]"}`}>{cat}</span>
+                      <span className="text-xs text-[#6A4A4C]">{detail}</span>
+                    </td>
+                    <td className={`${td} text-xs`}>{shortDt(f.match_resolutions?.created_at)}</td>
+                    <td className={td}>{f.match_resolutions?.offered_slots.length ?? 0}개</td>
+                    <td className={td}>
+                      <Pill tone={f.match_resolutions?.resolved_at ? "ok" : "wait"}>{f.match_resolutions?.resolved_at ? choice(f.match_resolutions.choice) : "선택 대기"}</Pill>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </TableWrap>
         </section>

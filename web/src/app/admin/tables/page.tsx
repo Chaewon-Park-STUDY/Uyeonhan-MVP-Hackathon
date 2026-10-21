@@ -15,7 +15,7 @@ type T = {
 const ATT: Record<string, string> = { SCHEDULED: "예정", ATTENDED: "참석", CANCELED_EARLY: "사전취소", CANCELED_LATE: "당일취소", NO_SHOW: "노쇼" };
 
 // 확정 테이블 + 매칭 근거 (PRD ADM-03, MAT-12: 운영자에게는 점수 구성까지 보여줌)
-export default async function Tables({ searchParams }: { searchParams: Promise<{ date?: string; table?: string }> }) {
+export default async function Tables({ searchParams }: { searchParams: Promise<{ date?: string; table?: string; region?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const { data: slots } = await supabase.from("event_slots").select("id, starts_at").order("starts_at");
@@ -27,7 +27,8 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
     .select("id, status, score, confirmed_at, score_breakdown, explanation, event_slots(starts_at, region_code), venues(name), chat_rooms(id, chat_messages(count)), table_members(user_id, attendance, reallocation_count, profiles(name, birth_year, gender, mbti, self_traits))");
   q = sp.table ? q.eq("id", sp.table) : q.in("slot_id", slotIds.length ? slotIds : ["00000000-0000-0000-0000-000000000000"]);
   const { data } = await q.order("created_at");
-  const tables = (data ?? []) as unknown as T[];
+  const allTables = (data ?? []) as unknown as T[];
+  const tables = sp.region ? allTables.filter((t) => t.event_slots.region_code === sp.region) : allTables;
   const year = new Date().getFullYear();
 
   // PRD 7.2 매칭 결과 필수 표시: 참가자별 희망 일정 충족·이전 만남·차단 충돌·희망 동물 충족·재배치 사유
@@ -50,12 +51,25 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-2 text-xl font-bold">테이블</h1>
-        <a href="/admin/export?type=tables" className="order-last ml-auto rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-sm">⬇ CSV 내보내기</a>
+        <a href={`/admin/export?type=tables&date=${date}`} title="이 날짜 테이블 구성(멤버·식당·점수)을 엑셀에서 열 수 있는 파일로 받아요" className="order-last ml-auto rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-sm">⬇ {date} 테이블 엑셀(CSV)로 받기</a>
         {allDates.map((d) => (
           <Link key={d} href={`/admin/tables?date=${d}`}
                 className={`rounded-full px-3 py-1 text-sm ${d === date && !sp.table ? "bg-[#7A1F2B] text-white" : "border border-[#E9DCD3] bg-white"}`}>{d}</Link>
         ))}
       </div>
+      {!sp.table && allTables.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {[["", "모든 지역"], ...Object.entries(REGION_LABEL)].map(([code, label]) => {
+            const n = code ? allTables.filter((t) => t.event_slots.region_code === code).length : allTables.length;
+            return (
+              <Link key={code || "all"} href={`/admin/tables?date=${date}${code ? `&region=${code}` : ""}`}
+                    className={`rounded-full px-3 py-1 text-sm ${(sp.region ?? "") === code ? "bg-[#7A1F2B] text-white" : "border border-[#E9DCD3] bg-white"}`}>
+                {label} {n}
+              </Link>
+            );
+          })}
+        </div>
+      )}
       {tables.length === 0 && <Card><p className="text-sm text-[#8B6A66]">이 날짜에는 아직 만들어진 테이블이 없어요. 매칭은 화요일 24:00 이후 자동 실행돼요.</p></Card>}
       <p className="text-sm text-[#8B6A66]">테이블을 누르면 멤버와 이 테이블을 만든 이유가 펼쳐져요.</p>
       <div className="space-y-2.5">

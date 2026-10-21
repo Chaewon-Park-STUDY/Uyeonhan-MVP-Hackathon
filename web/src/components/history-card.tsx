@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Card } from "@/components/ui";
 import { MATCH_LABEL, PAYMENT_LABEL } from "@/lib/labels";
 
@@ -42,29 +45,51 @@ const val = (v: string | null) => {
 };
 const time = (iso: string) => new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
-export function HistoryCard({ logs, settings, nameOf }: { logs: Log[]; settings: { key: string; actor: string; at: string }[]; nameOf: Map<string, string> }) {
+// 대상 묶음 (필터 버튼)
+const GROUP: Record<string, string> = {
+  application: "신청·결제", applications: "신청·결제", payments: "신청·결제", table_members: "참석", dining_tables: "테이블",
+  event_slots: "회차·식당", venues: "회차·식당", exception_cases: "신고·처리대기함", safety_reports: "신고·처리대기함", profiles: "회원",
+};
+
+export function HistoryCard({ logs, settings, names }: { logs: Log[]; settings: { key: string; actor: string; at: string }[]; names: Record<string, string> }) {
+  const nameOf = { get: (k: string) => names[k] };
+  const [who, setWho] = useState("");
+  const [grp, setGrp] = useState("");
+  const [n, setN] = useState(10);
   const SETTING: Record<string, string> = { matching: "매칭 기준", demo: "시연 모드", no_show_sanction: "노쇼 규칙", message_overrides: "알림 문구", pricing: "요금" };
   const items = [
     ...logs.map((l) => {
       const who = l.entity === "table_members" ? nameOf.get(/user ([0-9a-f-]{36})/.exec(l.new_value ?? "")?.[1] ?? "") : nameOf.get(l.entity_id);
       const v = (x: string | null) => (l.field === "is_open" ? (x === "true" ? "모집 중" : "닫힘") : l.field === "is_active" ? (x === "true" ? "사용" : "중지") : val(x));
-      return { at: l.at, actor: l.actor, what: `${ENTITY[l.entity] ?? l.entity}${FIELD[l.field] && ENTITY[l.entity] !== FIELD[l.field] ? ` · ${FIELD[l.field]}` : ""}`,
+      return { grp: GROUP[l.entity] ?? "기타", at: l.at, actor: l.actor, what: `${ENTITY[l.entity] ?? l.entity}${FIELD[l.field] && ENTITY[l.entity] !== FIELD[l.field] ? ` · ${FIELD[l.field]}` : ""}`,
                who, from: v(l.old_value), to: v(l.new_value) };
     }),
-    ...settings.map((h) => ({ at: h.at, actor: h.actor, what: `설정 · ${SETTING[h.key] ?? h.key}`, who: undefined, from: "", to: "변경" })),
-  ].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 40);
+    ...settings.map((h) => ({ grp: "설정", at: h.at, actor: h.actor, what: `설정 · ${SETTING[h.key] ?? h.key}`, who: undefined, from: "", to: "변경" })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
+  const filtered = items.filter((it) => (!who || actorOf(it.actor)[1] === who) && (!grp || it.grp === grp));
+  const groups = [...new Set(items.map((it) => it.grp))];
+  const chip = (on: boolean, extra = "") => `rounded-full px-3 py-1 text-xs transition ${on ? "bg-[#7A1F2B] text-white" : `border border-[#E9DCD3] bg-white ${extra}`}`;
 
   return (
     <Card>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-bold">변경 이력</h2>
-        <div className="flex flex-wrap gap-1.5 text-xs">
-          {ACTOR.map(([, name, cls]) => <span key={name} className={`rounded-full px-2 py-0.5 ${cls}`}>{name}</span>)}
+      <h2 className="mb-3 text-lg font-bold">변경 이력 <span className="text-sm font-normal text-[#8B6A66]">누가·언제·무엇을 바꿨는지</span></h2>
+      <div className="mb-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="w-12 text-xs font-semibold text-[#8B6A66]">누가</span>
+          <button type="button" onClick={() => { setWho(""); setN(10); }} className={chip(!who)}>전체</button>
+          {ACTOR.map(([, name, cls]) => (
+            <button key={name} type="button" onClick={() => { setWho(name); setN(10); }} className={who === name ? chip(true) : `rounded-full px-3 py-1 text-xs ${cls}`}>{name}</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="w-12 text-xs font-semibold text-[#8B6A66]">무엇을</span>
+          <button type="button" onClick={() => { setGrp(""); setN(10); }} className={chip(!grp)}>전체</button>
+          {groups.map((g) => <button key={g} type="button" onClick={() => { setGrp(g); setN(10); }} className={chip(grp === g)}>{g}</button>)}
         </div>
       </div>
-      {items.length === 0 ? <p className="text-sm text-[#8B6A66]">아직 기록이 없어요.</p> : (
-        <ul className="max-h-[420px] divide-y divide-[#F4ECE6] overflow-y-auto">
-          {items.map((it, i) => {
+      {filtered.length === 0 ? <p className="text-sm text-[#8B6A66]">해당하는 기록이 없어요.</p> : (
+        <ul className="divide-y divide-[#F4ECE6]">
+          {filtered.slice(0, n).map((it, i) => {
             const [, name, cls] = actorOf(it.actor);
             return (
               <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
@@ -81,6 +106,12 @@ export function HistoryCard({ logs, settings, nameOf }: { logs: Log[]; settings:
             );
           })}
         </ul>
+      )}
+      {filtered.length > n && (
+        <button type="button" onClick={() => setN(n + 10)}
+                className="mt-3 w-full rounded-xl border border-[#E9DCD3] py-2 text-sm text-[#6A4A4C] hover:border-[#7A1F2B]">
+          더 보기 ({filtered.length - n}건 남음)
+        </button>
       )}
     </Card>
   );

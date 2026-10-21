@@ -1,4 +1,4 @@
-import { AdminTitle, FilterChips, Pill, TableWrap, kstDate, shortDt, td, th } from "@/components/admin-ui";
+import { AdminTitle, FilterChips, FilterRow, Pager, Pill, TableWrap, kstDate, shortDt, td, th, todayKst } from "@/components/admin-ui";
 import { requireAdmin } from "@/lib/admin";
 import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, animalOf, byRarity } from "@/lib/labels";
 
@@ -20,7 +20,12 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
   let apps = (data ?? []) as unknown as App[];
 
   const dates = [...new Set(apps.flatMap((a) => a.application_slots.map((s) => s.event_slots && kstDate(s.event_slots.starts_at))).filter(Boolean) as string[])].sort();
-  if (sp.date) apps = apps.filter((a) => a.application_slots.some((s) => s.event_slots && kstDate(s.event_slots.starts_at) === sp.date));
+  // 처음 열면 다가오는 모임일로 (전체는 "모든 날짜")
+  const date = sp.date ?? dates.find((d) => d >= todayKst()) ?? "";
+  if (date && date !== "all") apps = apps.filter((a) => a.application_slots.some((s) => s.event_slots && kstDate(s.event_slots.starts_at) === date));
+  if (sp.region) apps = apps.filter((a) => a.application_slots.some((s) => s.event_slots?.region_code === sp.region &&
+    (!date || date === "all" || kstDate(s.event_slots!.starts_at) === date)));
+  if (sp.gender) apps = apps.filter((a) => a.profiles.gender === sp.gender);
   if (sp.pay) apps = apps.filter((a) => a.payment_status === sp.pay);
   if (sp.match) apps = apps.filter((a) => a.match_status === sp.match);
   if (sp.q) apps = apps.filter((a) => a.profiles.name.includes(sp.q!));
@@ -43,25 +48,50 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
     hist.set(r.reported_id, h);
   }
   const year = new Date().getFullYear();
-  const keep = { date: sp.date, pay: sp.pay, match: sp.match, q: sp.q };
+  const keep = { date, region: sp.region, gender: sp.gender, pay: sp.pay, match: sp.match, q: sp.q };
+  const page = Math.max(1, Number(sp.page) || 1);
+  const shown = apps.slice((page - 1) * 20, page * 20);
+  const csvHref = `/admin/export?${new URLSearchParams(Object.entries({ type: "applicants", ...keep }).filter(([, v]) => v) as [string, string][]).toString()}`;
   const payTone = (s: string) => (s === "PAID" ? "ok" : s === "PENDING" ? "wait" : s.startsWith("REFUND") ? "info" : "warn");
 
   return (
     <div className="space-y-3">
-      <AdminTitle title="신청자" desc={`신청 ${apps.length}건 · 오른쪽에서 이름으로 찾거나, 아래에서 날짜·결제·매칭 상태를 골라 볼 수 있어요.`}>
-        <a href="/admin/export?type=applicants" className="ml-auto rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-sm">⬇ CSV 내보내기</a>
-        <form className="flex gap-1.5">
-          {sp.date && <input type="hidden" name="date" value={sp.date} />}
-          <input name="q" defaultValue={sp.q} placeholder="이름 검색" className="rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-sm" />
-          <button className="rounded-full bg-[#7A1F2B] px-3 py-1 text-sm text-white">검색</button>
+      <AdminTitle title="신청자" desc={`조건에 맞는 신청 ${apps.length}건 · 한 쪽에 20명씩 보여요.`}>
+        <form className="ml-auto flex gap-1.5">
+          {Object.entries(keep).filter(([k, v]) => v && k !== "q").map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+          <input name="q" defaultValue={sp.q} placeholder="이름으로 찾기" className="rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-sm" />
+          <button className="rounded-full bg-[#7A1F2B] px-3 py-1 text-sm text-white">찾기</button>
         </form>
       </AdminTitle>
-      <FilterChips base="/admin/applicants" param="date" current={sp.date} keep={keep}
-                   options={[["", "모든 날짜"], ...dates.map((d) => [d, d] as [string, string])]} />
-      <FilterChips base="/admin/applicants" param="pay" current={sp.pay} keep={keep}
-                   options={[["", "결제 전체"], ["PENDING", "결제 대기"], ["PAID", "결제 완료"], ["REFUNDED", "환불 완료"], ["REFUND_FAILED", "환불 실패"]]} />
-      <FilterChips base="/admin/applicants" param="match" current={sp.match} keep={keep}
-                   options={[["", "매칭 전체"], ["WAITING", "매칭 대기"], ["CONFIRMED", "확정"], ["ALTERNATIVE_OFFERED", "다른 일정 선택 필요"], ["NO_MATCH", "매칭 종료"]]} />
+
+      <div className="space-y-2 rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
+        <FilterRow label="모임일">
+          <FilterChips base="/admin/applicants" param="date" current={date} keep={keep}
+                       options={[["all", "모든 날짜"], ...dates.map((d) => [d, d.slice(5).replace("-", "/")] as [string, string])]} />
+        </FilterRow>
+        <FilterRow label="지역">
+          <FilterChips base="/admin/applicants" param="region" current={sp.region} keep={keep}
+                       options={[["", "전체"], ...Object.entries(REGION_LABEL)]} />
+        </FilterRow>
+        <FilterRow label="성별">
+          <FilterChips base="/admin/applicants" param="gender" current={sp.gender} keep={keep} options={[["", "전체"], ["F", "여"], ["M", "남"]]} />
+        </FilterRow>
+        <FilterRow label="결제">
+          <FilterChips base="/admin/applicants" param="pay" current={sp.pay} keep={keep}
+                       options={[["", "전체"], ["PENDING", "결제 대기"], ["PAID", "결제 완료"], ["REFUND_AVAILABLE", "환불 가능"], ["REFUNDED", "환불 완료"]]} />
+        </FilterRow>
+        <FilterRow label="매칭">
+          <FilterChips base="/admin/applicants" param="match" current={sp.match} keep={keep}
+                       options={[["", "전체"], ["WAITING", "매칭 대기"], ["CONFIRMED", "확정"], ["ALTERNATIVE_OFFERED", "다른 일정 선택 필요"], ["NO_MATCH", "매칭 종료"]]} />
+        </FilterRow>
+        <div className="flex flex-wrap items-center gap-3 border-t border-[#F4ECE6] pt-3">
+          <a href={csvHref} className="rounded-full bg-[#2E8B57] px-3 py-1.5 text-sm font-semibold text-white">⬇ 지금 보이는 {apps.length}명 엑셀(CSV)로 받기</a>
+          <span className="text-xs text-[#8B6A66]">
+            위에서 고른 조건 그대로, 이름·연락처·나이·성별·직업·MBTI·관심사·희망 회차·결제/매칭 상태를 엑셀에서 열 수 있는 파일로 받아요.
+            연락처가 들어 있으니 외부에 공유하지 마세요.
+          </span>
+        </div>
+      </div>
 
       <TableWrap min={980}>
         <thead>
@@ -69,7 +99,7 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
             <th className={th}>매칭</th><th className={th}>이전 이력</th><th className={th}>신청 시각</th></tr>
         </thead>
         <tbody>
-          {apps.slice(0, 200).map((a) => {
+          {shown.map((a) => {
             const p = a.profiles;
             const h = hist.get(p.id) ?? { attended: 0, noshow: 0, reported: 0 };
             const restricted = p.restricted_until && p.restricted_until > new Date().toISOString();
@@ -102,7 +132,7 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
           })}
         </tbody>
       </TableWrap>
-      {apps.length > 200 && <p className="text-xs text-[#8B6A66]">앞의 200건만 보여요. 날짜·상태로 좁혀 보세요.</p>}
+      <Pager base="/admin/applicants" page={page} total={apps.length} keep={keep} />
     </div>
   );
 }

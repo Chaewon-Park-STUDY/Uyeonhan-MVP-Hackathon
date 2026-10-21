@@ -1,4 +1,4 @@
-import { AdminTitle, Pill, TableWrap, shortDt, td, th } from "@/components/admin-ui";
+import { AdminTitle, FilterChips, FilterRow, Pager, Pill, TableWrap, shortDt, td, th } from "@/components/admin-ui";
 import { PendingButton } from "@/components/pending";
 import { requireAdmin } from "@/lib/admin";
 import { type MsgOverride, NOTI_TEMPLATES, notiText } from "@/lib/labels";
@@ -17,18 +17,24 @@ const CHAT_KIND: Record<string, [string, string]> = {
 const SAMPLE = { starts_at: "2026-10-29T10:30:00Z", region: "HONGDAE", venue: "홍대 스시 하루", amount: 9900, match_run_at: "2026-10-27T15:00:00Z", deadline: "2026-10-27T15:00:00Z" };
 
 // PRD §11 자동 메시지 관리: 템플릿과 자동 발송 이력
-export default async function Messages({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+export default async function Messages({ searchParams }: { searchParams: Promise<{ saved?: string; tpl?: string; st?: string; page?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const [{ data: stats }, { data: chat }, { data: recent }, { data: ov }] = await Promise.all([
     supabase.rpc("admin_message_stats"),
     supabase.rpc("admin_chat_stats"),
     supabase.from("notifications").select("id, template, scheduled_at, sent_at, attempts, last_error, profiles(name)")
-      .order("scheduled_at", { ascending: false }).limit(60),
+      .order("scheduled_at", { ascending: false }).limit(1000),
     supabase.rpc("message_overrides"),
   ]);
   const byTpl = new Map(((stats ?? []) as Stat[]).map((s) => [s.template, s]));
   const overrides = (ov ?? {}) as Record<string, MsgOverride>;
+  const allHist = (recent ?? []) as unknown as Noti[];
+  const usedTpls = NOTI_TEMPLATES.map((t) => t.code).filter((c) => allHist.some((n) => n.template === c));
+  const hist = allHist.filter((n) => (!sp.tpl || n.template === sp.tpl) &&
+    (!sp.st || (sp.st === "sent" ? !!n.sent_at : sp.st === "failed" ? !n.sent_at && !!n.last_error : !n.sent_at && !n.last_error)));
+  const page = Math.max(1, Number(sp.page) || 1);
+  const histPage = hist.slice((page - 1) * 20, page * 20);
   const label = (code: string) => NOTI_TEMPLATES.find((t) => t.code === code)?.when ?? code;
 
   return (
@@ -90,11 +96,21 @@ export default async function Messages({ searchParams }: { searchParams: Promise
       </section>
 
       <section>
-        <h2 className="mb-2 font-semibold">최근 발송 이력 <span className="text-sm font-normal text-[#8B6A66]">실패하면 5분마다 다시 시도, 3번 실패하면 처리대기함으로</span></h2>
+        <h2 className="mb-2 font-semibold">발송 이력 <span className="text-sm font-normal text-[#8B6A66]">실패하면 5분마다 다시 시도, 3번 실패하면 처리대기함으로</span></h2>
+        <div className="mb-2 space-y-2 rounded-2xl bg-white p-3 shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
+          <FilterRow label="상태">
+            <FilterChips base="/admin/messages" param="st" current={sp.st} keep={{ tpl: sp.tpl }}
+                         options={[["", "전체"], ["sent", "보냄"], ["pending", "예약됨"], ["failed", "실패"]]} />
+          </FilterRow>
+          <FilterRow label="알림">
+            <FilterChips base="/admin/messages" param="tpl" current={sp.tpl} keep={{ st: sp.st }}
+                         options={[["", "전체"], ...usedTpls.map((c) => [c, label(c)] as [string, string])]} />
+          </FilterRow>
+        </div>
         <TableWrap min={720}>
           <thead><tr><th className={th}>받는 사람</th><th className={th}>알림</th><th className={th}>예약 시각</th><th className={th}>발송</th><th className={th}>시도</th></tr></thead>
           <tbody>
-            {((recent ?? []) as unknown as Noti[]).map((n) => (
+            {histPage.map((n) => (
               <tr key={n.id}>
                 <td className={td}>{n.profiles?.name}</td>
                 <td className={td}>{label(n.template)}</td>
@@ -105,6 +121,7 @@ export default async function Messages({ searchParams }: { searchParams: Promise
             ))}
           </tbody>
         </TableWrap>
+        <div className="mt-3"><Pager base="/admin/messages" page={page} total={hist.length} keep={{ tpl: sp.tpl, st: sp.st }} /></div>
       </section>
     </div>
   );
