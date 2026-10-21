@@ -64,7 +64,6 @@ export default async function PayPage({ params, searchParams }: {
       <form action={pay} className="mt-5">
         <input type="hidden" name="id" value={id} />
         <Submit>{won(payment?.amount ?? 0)} 결제하기</Submit>
-        <p className="mt-2 text-center text-xs text-[#B7A3A0]">지금은 시연 버전이라 실제로 돈이 나가지 않아요.</p>
       </form>
     </Page>
   );

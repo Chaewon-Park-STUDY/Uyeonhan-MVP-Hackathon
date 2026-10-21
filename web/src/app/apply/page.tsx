@@ -28,7 +28,8 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
   ]);
   // 회차 인기도 (신청 수·정원만 집계, 개인정보 없음)
   type Review = { region_code: string; avg_score: number; n: number; comments: { text: string; date: string; score: number }[] };
-  const reviewList = ((reviews ?? []) as Review[]).filter((x) => Number(x.n) > 0);
+  // 평가가 3명 이상 모인 지역만 (한두 명 점수로 지역 전체를 판단하지 않게)
+  const reviewList = ((reviews ?? []) as Review[]).filter((x) => Number(x.n) >= 3);
 
   const byDate = new Map<string, Slot[]>();
   for (const s of (slots ?? []) as Slot[]) {
@@ -55,18 +56,28 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
 
         {reviewList.length > 0 && (
           <Card>
-            <Label hint="우연한 식탁에서 실제로 식사한 분들이 남긴 평가예요 (이름 없이)">지난 모임 후기</Label>
+            <Label hint="실제로 식사한 분들이 남긴 평가예요 (이름 없이) · 지역을 누르면 한마디가 보여요">지난 모임 후기</Label>
             <div className="grid gap-2 sm:grid-cols-2">
               {reviewList.map((rv) => (
-                <div key={rv.region_code} className="rounded-xl bg-[#FBF7F0] px-3 py-2.5 text-sm">
-                  <p className="flex items-center justify-between">
+                <details key={rv.region_code} className="group rounded-xl bg-[#FBF7F0] px-3 py-2.5 text-sm">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
                     <b>{REGION_LABEL[rv.region_code]}</b>
-                    <span className="text-[#C9A227]">{"★".repeat(Math.round(Number(rv.avg_score)))}<span className="ml-1 text-xs text-[#6A4A4C]">{rv.avg_score} · {rv.n}명</span></span>
-                  </p>
-                  {rv.comments.map((c, i) => (
-                    <p key={i} className="mt-1 text-xs text-[#6A4A4C]">“{c.text}” <span className="text-[#B7A3A0]">· {c.date} 참가자</span></p>
-                  ))}
-                </div>
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-[#C9A227]">★ {rv.avg_score}</span>
+                      <span className="text-xs text-[#8B6A66]">{rv.n}명 평가</span>
+                      <span className="text-xs text-[#B7A3A0] transition group-open:rotate-180">▾</span>
+                    </span>
+                  </summary>
+                  <div className="mt-2 space-y-1.5 border-t border-[#EFE3DC] pt-2">
+                    {rv.comments.length === 0 && <p className="text-xs text-[#8B6A66]">아직 남겨진 한마디가 없어요.</p>}
+                    {rv.comments.map((c, i) => (
+                      <p key={i} className="text-xs leading-relaxed text-[#4A3436]">
+                        <span className="text-[#C9A227]">{"★".repeat(c.score)}</span> “{c.text}”
+                        <span className="ml-1 text-[#B7A3A0]">· {c.date} 참가자</span>
+                      </p>
+                    ))}
+                  </div>
+                </details>
               ))}
             </div>
           </Card>

@@ -39,7 +39,6 @@ export default async function NotificationsPage() {
           );
         })}
       </div>
-      <p className="mt-4 text-center text-xs text-[#B7A3A0]">시연 버전에서는 앱 알림과 단체방 메시지로 안내해요. (카카오 알림톡·문자는 실제 운영 시 연결)</p>
     </Page>
   );
 }

@@ -54,7 +54,7 @@ export default async function FeedbackPage({ params, searchParams }: {
         {fmtDate(info.starts_at)} · {info.venue_name ? venueName(info.venue_name) : REGION_LABEL[info.region_code]}
         <br />1분이면 끝나요. 남겨 주신 답은 다음 매칭을 더 잘 맞추는 데 쓰여요.
       </p>
-      {st.demo && <p className="mb-4 rounded-xl bg-[#F4E4DE] px-3 py-2 text-xs">시연 모드: 모임 전이라도 피드백을 남겨 볼 수 있어요.</p>}
+      {st.demo && <p className="mb-4 rounded-xl bg-[#F4E4DE] px-3 py-2 text-xs">지금은 모임 전에도 피드백을 미리 남겨 볼 수 있게 열려 있어요.</p>}
       <ErrorBox message={error} />
 
       <form action={submitFeedback} className="space-y-4">
