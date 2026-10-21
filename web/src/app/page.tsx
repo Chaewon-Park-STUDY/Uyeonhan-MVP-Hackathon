@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
 import { DiamondRule, WaxSeal } from "@/components/brand";
 import { Invitation } from "@/components/invitation";
@@ -47,6 +48,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       </>
     );
   }
+  if (profile?.role === "admin") redirect("/admin");      // 운영자는 운영 화면으로
   if (!profile) {
     return (
       <Page>
