@@ -6,8 +6,8 @@ import { ExclusiveChips } from "@/components/exclusive-chips";
 import { getMe } from "@/lib/supabase/server";
 import { saveProfile } from "./actions";
 
-export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ error?: string; ref?: string }> }) {
+  const { error, ref } = await searchParams;
   const { user, profile } = await getMe();
   if (!user) redirect("/login?next=/onboarding");
   const p = profile ?? {};
@@ -79,10 +79,10 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         <Card>
           <Label hint="식당을 정할 때 반드시 피해요">알레르기</Label>
           <ExclusiveChips name="allergies" options={ALLERGIES} checked={p.allergies?.length ? p.allergies : profile ? ["없어요"] : []} />
-          <input name="allergy_other" placeholder="그 밖의 알레르기 (선택)" className={`${inputCls} mt-2`} />
+          <input name="allergy_other" placeholder="그 밖의 알레르기 (선택)" defaultValue={(p.allergies ?? []).find((x: string) => x.startsWith("기타:"))?.slice(3) ?? ""} className={`${inputCls} mt-2`} />
           <Label hint="못 먹는 건 아니지만 가능하면 피하고 싶은 것. 식당을 고를 때 피해요">피하고 싶은 음식</Label>
           <ExclusiveChips name="food_dislikes" options={DISLIKES} checked={p.food_dislikes?.length ? p.food_dislikes : profile ? ["없어요"] : []} />
-          <input name="dislike_other" placeholder="그 밖에 (선택)" className={`${inputCls} mt-2`} />
+          <input name="dislike_other" placeholder="그 밖에 (선택)" defaultValue={(p.food_dislikes ?? []).find((x: string) => x.startsWith("기타:"))?.slice(3) ?? ""} className={`${inputCls} mt-2`} />
           <Label>식사 예산</Label>
           <Chips name="budget_ranges" options={BUDGETS} checked={p.budget_ranges ?? []} />
         </Card>
@@ -104,6 +104,12 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
           <input type="checkbox" name="privacy" required defaultChecked={!!p.privacy_agreed_at} className="mt-1 accent-[#7A1F2B]" />
           <span>개인정보 수집·이용과 운영 정책(환불·노쇼 규정)에 동의해요. 매칭이 확정되면 같은 테이블 참가자와 앱 단체방에서 대화할 수 있어요.</span>
         </label>
+        {!profile && (
+          <div>
+            <Label hint="친구에게 받은 초대 코드가 있으면 첫 신청 때 할인 쿠폰을 드려요">초대 코드 (선택)</Label>
+            <input name="ref" defaultValue={ref ?? ""} placeholder="예: ac383c5f" autoComplete="off" className={inputCls} />
+          </div>
+        )}
         <Submit>{profile ? "저장하기" : "저장하고 신청하러 가기"}</Submit>
       </form>
     </Page>

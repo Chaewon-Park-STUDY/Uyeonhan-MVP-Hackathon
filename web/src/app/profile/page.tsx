@@ -20,23 +20,29 @@ import { AnimalBadge } from "@/components/animal-cards";
 import { ProfileSummary } from "@/components/profile-summary";
 import { getMe } from "@/lib/supabase/server";
 import { PendingButton } from "@/components/pending";
-import { deleteAccount } from "./actions";
+import { deleteAccount, enterReferral } from "./actions";
+import { CopyButton } from "@/components/copy-button";
+import { inputCls } from "@/components/ui";
 
-export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
-  const { saved, error } = await searchParams;
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string; ref_ok?: string }> }) {
+  const { saved, error, ref_ok } = await searchParams;
   const { supabase, user, profile: p } = await getMe();
   if (!user) redirect("/login?next=/profile");
   if (!p) redirect("/onboarding");
 
   const nowIso = new Date().toISOString();
-  const [{ data: passes }, { data: coupons }, { data: mine }, { data: fbs }] = await Promise.all([
+  const [{ data: passes }, { data: coupons }, { data: mine }, { data: fbs }, { data: refRows }] = await Promise.all([
     supabase.from("passes").select("id, type, remaining, expires_at, created_at, applications(application_status, match_status, payment_status, application_slots(event_slots(starts_at)))").order("created_at", { ascending: false }).limit(5),
     supabase.from("coupons").select("kind, discount_rate, expires_at").is("used_at", null).gt("expires_at", nowIso),
     // 참가 이력 (RET-01): 내가 들어갔던 확정 테이블
     supabase.from("table_members").select("table_id, attendance, dining_tables(status, event_slots(starts_at, region_code))")
       .eq("user_id", p.id),
     supabase.from("feedback").select("table_id").eq("user_id", p.id),
+    supabase.rpc("my_referral"),
   ]);
+  const ref = ((refRows ?? []) as { code: string; invited: number; rewarded: number; referred: boolean; can_enter: boolean }[])[0];
+  const site = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://uyeonhan-mvp-hackathon.vercel.app";
+  const inviteLink = ref ? `${site}/login?mode=signup&ref=${ref.code}` : "";
   type Hist = { table_id: string; attendance: string; dining_tables: { status: string; event_slots: { starts_at: string; region_code: string } | null } | null };
   const fbDone = new Set((fbs ?? []).map((f) => f.table_id));
   const history = ((mine ?? []) as unknown as Hist[])
@@ -48,6 +54,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   return (
     <Page title="내 프로필" back="/">
       {error && <p className="mb-4 rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{error}</p>}
+      {ref_ok && <p className="mb-4 rounded-xl bg-[#FBEFD0] px-4 py-3 text-sm text-[#8A5B00]">🎁 초대 코드가 확인됐어요. 친구 초대 할인 쿠폰을 드렸어요.</p>}
       {saved && <p className="mb-4 rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">저장했어요.</p>}
 
       <ProfileSummary p={p} />
@@ -81,6 +88,28 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           ))}
         </ul>
       </Card>
+
+      {ref && (
+        <Card className="mt-4">
+          <p className="mb-1 text-xs text-[#8B6A66]">친구 초대</p>
+          <p className="text-sm text-[#6A4A4C]">친구가 내 코드로 가입하면 친구는 첫 신청 할인, 친구가 결제하면 나도 할인 쿠폰을 받아요.</p>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="flex-1 rounded-xl border border-dashed border-[#C9A227] bg-[#FFFCF9] px-4 py-2.5 text-center font-mono text-lg font-bold tracking-widest text-[#7A1F2B]">{ref.code}</span>
+            <CopyButton text={ref.code} label="코드 복사" />
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs text-[#8B6A66]">
+            <span className="min-w-0 flex-1 truncate">{inviteLink}</span>
+            <CopyButton text={inviteLink} label="초대 링크 보내기" shareTitle="우연한 식탁에 초대해요" />
+          </div>
+          <p className="mt-2 text-xs text-[#6A4A4C]">지금까지 <b>{ref.invited}명</b>이 내 코드로 가입했고, 감사 쿠폰 <b>{ref.rewarded}장</b>을 받았어요.</p>
+          {ref.can_enter && (
+            <form action={enterReferral} className="mt-3 flex gap-2 border-t border-[#F4ECE6] pt-3">
+              <input name="code" placeholder="친구에게 받은 초대 코드" autoComplete="off" className={`${inputCls} py-2 text-sm`} />
+              <button className="shrink-0 rounded-xl bg-[#7A1F2B] px-3 text-sm font-semibold text-white">넣기</button>
+            </form>
+          )}
+        </Card>
+      )}
 
       <Card className="mt-4">
         <p className="mb-2 text-xs text-[#8B6A66]">참가 이력</p>

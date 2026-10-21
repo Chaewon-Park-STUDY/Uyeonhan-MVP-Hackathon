@@ -5,10 +5,12 @@ import { getMe } from "@/lib/supabase/server";
 import { type BoardSlot, type SlotStat, SlotPicker } from "@/components/schedule-board";
 import { submitApplication } from "./actions";
 
+const COUPON_NAME: Record<string, string> = { REVISIT: "재방문", REFERRAL_NEW: "친구 초대(환영)", REFERRAL_INVITER: "친구 초대(감사)", LAST_MINUTE: "마감 할인", NO_SHOW_COMPENSATION: "보상" };
+
 type Slot = { id: string; starts_at: string; region_code: string; apply_deadline: string };
 
-export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ error?: string; welcome?: string }> }) {
-  const { error, welcome } = await searchParams;
+export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ error?: string; welcome?: string; ref_ok?: string; ref_error?: string }> }) {
+  const { error, welcome, ref_ok, ref_error } = await searchParams;
   const { supabase, user, profile } = await getMe();
   if (!user) redirect("/login?next=/apply");
   if (!profile) redirect("/onboarding");
@@ -42,6 +44,8 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
           자리 카드를 저장했어요. 이제 갈 수 있는 날짜를 골라 주세요. <a href="/profile" className="underline">내 프로필 보기</a>
         </p>
       )}
+      {ref_ok && <p className="mb-4 rounded-xl bg-[#FBEFD0] px-4 py-3 text-sm text-[#8A5B00]">🎁 초대 코드가 확인됐어요. 아래 쿠폰에서 친구 초대 할인을 고를 수 있어요.</p>}
+      {ref_error && <p className="mb-4 rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">초대 코드: {ref_error}</p>}
       <ErrorBox message={error} />
       <form action={submitApplication} className="space-y-4">
         <Card>
@@ -102,7 +106,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
                 <option value="">사용 안 함</option>
                 {coupons!.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {Math.round(c.discount_rate * 100)}% 할인 쿠폰
+                    {COUPON_NAME[c.kind] ?? "할인"} 쿠폰 · {Math.round(c.discount_rate * 100)}% 할인
                   </option>
                 ))}
               </select>

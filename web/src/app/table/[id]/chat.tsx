@@ -6,7 +6,7 @@ import { createBrowser } from "@/lib/supabase/browser";
 
 export type Msg = { id: number; sender_id: string | null; kind: string; content: string; created_at: string;
   deleted_at?: string | null };
-type Member = { profile_id: string; nickname: string; is_me: boolean; animals?: string[] | null; age_band?: string };
+type Member = { profile_id: string; nickname: string; is_me: boolean; animals?: string[] | null; age_band?: string; canceled?: boolean };
 
 // 운영 안내 메시지: 제목·색으로 구분하고, 한 묶음으로 접어서 참가자 대화와 섞이지 않게
 const BOT: Record<string, { title: string; color: string }> = {
@@ -168,6 +168,9 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
         <div ref={bottom} />
       </div>
 
+      {me?.canceled ? (
+        <p className="mt-4 rounded-xl bg-[#F4ECE6] px-4 py-3 text-center text-sm text-[#6A4A4C]">참석을 취소해서 이 단체방에는 더 이상 글을 쓸 수 없어요.</p>
+      ) : (
       <div className="sticky bottom-0 mt-4 bg-[#FBF7F0] py-3">
         {picker && (
           <div className="mb-2 grid grid-cols-8 gap-1 rounded-xl bg-white p-2 shadow-[0_1px_3px_rgba(74,52,38,0.12)]">
@@ -201,6 +204,7 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
         </form>
         {error && <p className="mt-1 text-xs text-[#A2412A]">{error}</p>}
       </div>
+      )}
     </div>
   );
 }

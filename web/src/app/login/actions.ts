@@ -24,6 +24,10 @@ export async function signUp(formData: FormData) {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) back("signup", error.message.includes("registered") ? "이미 가입된 이메일이에요." : "가입에 실패했어요.", "/onboarding");
-  if (!data.session) back("signin", "가입 확인 메일을 보냈어요. 확인 후 로그인해 주세요.", "/onboarding");
-  redirect("/onboarding");
+  if (!data.session) {
+    const r = String(formData.get("ref") ?? "").replace(/[^0-9a-zA-Z]/g, "").slice(0, 16);
+    back("signin", "가입 확인 메일을 보냈어요. 확인 후 로그인해 주세요.", r ? `/onboarding?ref=${r}` : "/onboarding");
+  }
+  const ref = String(formData.get("ref") ?? "").replace(/[^0-9a-zA-Z]/g, "").slice(0, 16);
+  redirect(ref ? `/onboarding?ref=${ref}` : "/onboarding");
 }

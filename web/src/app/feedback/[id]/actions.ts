@@ -19,6 +19,9 @@ export async function submitFeedback(formData: FormData) {
     comment: one("comment"),
     people,
   };
+  if (one("report_to") && !one("report_reason")) {
+    redirect(`/feedback/${tableId}?error=${encodeURIComponent("신고할 사람을 골랐다면 어떤 일이 있었는지도 적어 주세요.")}`);
+  }
   if (one("report_to") && one("report_reason")) p.report = { to: one("report_to"), reason: one("report_reason") };
 
   const supabase = await createClient();

@@ -161,7 +161,7 @@ export function notiText(template: string, p: NotiPayload) {
     case "APPLIED":
       return { title: "신청이 접수됐어요 📝", body: `${when} ${where} 등 희망 회차. 신청 내용은 홈에서 확인하고, 신청 마감 전까지 홈의 '신청 취소'로 취소할 수 있어요.` };
     case "APP_CANCELED":
-      return { title: "신청을 취소했어요", body: `${when} ${where} 신청이 취소됐어요. 결제했다면 전액 환불돼요.` };
+      return { title: "신청을 취소했어요", body: `${when} ${where} 신청이 취소됐어요. 1회권 결제는 전액 환불되고, 멤버십은 기간이 그대로 남아요.` };
     case "PAYMENT_PENDING":
       return { title: "결제를 완료해 주세요", body: `${p.deadline ? fmtDeadline(p.deadline) : "신청 마감"}까지 결제해야 매칭에 들어가요. 홈 → 결제하기` };
     case "PAID":
@@ -234,6 +234,10 @@ export const ERROR_TEXT: Record<string, string> = {
   CANCEL_NOT_ALLOWED: "이미 매칭이 진행됐거나 끝난 신청은 여기서 취소할 수 없어요.",
   CANCEL_AFTER_DEADLINE: "신청 마감(화요일 24:00)이 지나 취소할 수 없어요. 확정 뒤에는 테이블 화면에서 참석 취소를 해 주세요.",
   CANCELED_APPLICATION: "취소한 신청이라 결제할 수 없어요. 새로 신청해 주세요.",
+  REFERRAL_NOT_FOUND: "없는 초대 코드예요. 다시 확인해 주세요.",
+  REFERRAL_SELF: "내 초대 코드는 쓸 수 없어요.",
+  REFERRAL_ALREADY: "초대 코드는 한 번만 넣을 수 있어요.",
+  REFERRAL_NOT_NEW: "초대 코드는 첫 모임 전까지만 넣을 수 있어요.",
   FORBIDDEN_FIELD: "바꿀 수 없는 항목이에요.",
   HAS_UPCOMING_TABLE: "확정된 모임이 남아 있어요. 먼저 테이블 화면에서 참석 취소를 해 주세요.",
   HAS_PENDING_APPLICATION: "결제한 신청이 매칭을 기다리고 있어요. 매칭이 끝난 뒤(또는 환불 후)에 탈퇴할 수 있어요.",

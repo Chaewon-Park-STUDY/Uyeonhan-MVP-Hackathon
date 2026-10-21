@@ -35,7 +35,7 @@ const RESOLVED_TEXT: Record<string, string> = {
   PASS_KEPT: "이용권을 보관했어요. 다음 신청 때 쓸 수 있어요.",
   MEMBERSHIP_EXTENDED: "멤버십 기간을 7일 연장했어요.",
   REFUNDED: "전액 환불을 완료했어요.",
-  CANCELED: "신청을 취소했어요. 결제했다면 전액 환불됐어요.",
+  CANCELED: "신청을 취소했어요. 1회권으로 결제했다면 전액 환불됐어요. (멤버십은 기간이 그대로 남아요)",
 };
 
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -110,15 +110,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
   const intros: Record<string, Intro[]> = {};
   const fbDone: Record<string, boolean> = {};
+  const seatCanceled: Record<string, boolean> = {};
   await Promise.all(apps.map(async (a) => {
     const tid = a.table_members?.table_id;
     if (a.match_status === "CONFIRMED" && tid) {
       const [{ data: rows }, { data: st }] = await Promise.all([
         supabase.rpc("table_intro", { p_table_id: tid }),
-        supabase.rpc("my_table_status", { p_table: tid }).maybeSingle<{ feedback_done: boolean }>(),
+        supabase.rpc("my_table_status", { p_table: tid }).maybeSingle<{ feedback_done: boolean; attendance: string }>(),
       ]);
       intros[a.id] = (rows ?? []) as Intro[];
       fbDone[a.id] = !!st?.feedback_done;
+      seatCanceled[a.id] = !!st?.attendance?.startsWith("CANCELED");
     }
   }));
 
@@ -147,7 +149,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       ) : (
         <div className="space-y-4">
           {apps.map((a) => (
-            <AppCard key={a.id} a={a} intro={intros[a.id]} feedbackDone={fbDone[a.id]}
+            <AppCard key={a.id} a={a} intro={intros[a.id]} feedbackDone={fbDone[a.id]} seatCanceled={seatCanceled[a.id]}
                      passReused={apps.some((b) => b.id !== a.id && b.pass_id === a.pass_id && b.created_at > a.created_at)} />
           ))}
           {recommend && (
@@ -165,15 +167,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   );
 }
 
-function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: Intro[]; passReused: boolean; feedbackDone?: boolean }) {
+function AppCard({ a, intro, passReused, feedbackDone, seatCanceled }: { a: AppRow; intro?: Intro[]; passReused: boolean; feedbackDone?: boolean; seatCanceled?: boolean }) {
   const slots = a.application_slots.map((s) => s.event_slots).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
   const assigned = slots.find((s) => s.id === a.assigned_slot_id);
   const canceled = a.application_status === "CANCELED";
-  const m = canceled ? { label: "신청 취소", tone: "muted" as const } : MATCH_LABEL[a.match_status] ?? { label: a.match_status, tone: "muted" as const };
+  const m = canceled ? { label: "신청 취소", tone: "muted" as const } : seatCanceled ? { label: "참석 취소", tone: "muted" as const } : MATCH_LABEL[a.match_status] ?? { label: a.match_status, tone: "muted" as const };
   const paidLike = ["PAID", "REFUND_AVAILABLE"].includes(a.payment_status);
   const step: 0 | 1 | 2 | 3 =
     a.match_status === "CONFIRMED" ? 3 : paidLike ? 2 : a.payment_status === "PENDING" ? 1 : 0;
-  const announce = slots.length ? slots.reduce((min, s) => (s.apply_deadline < min ? s.apply_deadline : min), slots[0].apply_deadline) : null;
+  // 아직 지나지 않은 마감 중 가장 이른 것 (재배치 중이면 다음 희망 날짜의 마감)
+  const nowIso = new Date().toISOString();
+  const announce = slots.map((s) => s.apply_deadline).filter((d) => d > nowIso).sort()[0] ?? null;
   const payment = a.payments[0];
   const shared = a.table_members?.dining_tables?.explanation?.shared_interests ?? [];
 
@@ -210,9 +214,13 @@ function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: In
             <p className="text-sm">📍 {venueName(a.table_members.dining_tables.venues.name)}</p>
           )}
           <ButtonLink href={`/table/${a.table_members?.table_id}`}>단체방 · 식당 안내 보기</ButtonLink>
-          <p className="text-center text-xs text-[#8B6A66]">
-            피드백 {feedbackDone ? "✅ 제출 완료" : "아직 안 남겼어요 (모임 후 단체방 화면에서)"}
-          </p>
+          {seatCanceled ? (
+            <p className="rounded-xl bg-[#F4ECE6] px-3 py-2 text-center text-xs text-[#6A4A4C]">참석을 취소한 모임이에요. 남은 안내와 피드백 요청은 보내지 않아요.</p>
+          ) : (
+            <p className="text-center text-xs text-[#8B6A66]">
+              피드백 {feedbackDone ? "✅ 제출 완료" : "아직 안 남겼어요 (모임 후 단체방 화면에서)"}
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-1 text-sm">
@@ -242,11 +250,12 @@ function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: In
           <input type="hidden" name="id" value={a.id} />
           <label className="flex items-center gap-1"><input type="checkbox" name="confirm" className="accent-[#7A1F2B]" />취소할게요</label>
           <PendingButton className="rounded-lg border border-[#E9DCD3] px-2.5 py-1 text-xs">
-            {a.payment_status === "PAID" && a.passes?.type === "SINGLE" ? "신청 취소 (전액 환불)" : "신청 취소"}
+            {a.payment_status === "PAID" && a.passes?.type === "SINGLE" && (payment?.amount ?? 0) > 0 ? "신청 취소 (전액 환불)"
+              : payment?.method === "KEPT_PASS" ? "신청 취소 (이용권 돌려받기)" : "신청 취소"}
           </PendingButton>
         </form>
       )}
-      {a.match_status === "CONFIRMED" && assigned && assigned.starts_at > new Date().toISOString() && (
+      {a.match_status === "CONFIRMED" && !seatCanceled && assigned && assigned.starts_at > new Date().toISOString() && (
         <p className="mt-2 text-center text-xs text-[#8B6A66]">
           {(() => {
             // 아직 안 지난 다음 안내 하나만

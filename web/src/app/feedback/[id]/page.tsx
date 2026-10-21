@@ -31,7 +31,14 @@ export default async function FeedbackPage({ params, searchParams }: {
   ]);
   if (!st || !info) notFound();
   if (st.feedback_done) redirect(`/feedback/${id}/done`);
-  const others = ((roster ?? []) as Member[]).filter((m) => !m.is_me);
+  const others = ((roster ?? []) as (Member & { canceled?: boolean })[]).filter((m) => !m.is_me && !m.canceled);
+  if (String((st as { attendance?: string }).attendance ?? "").startsWith("CANCELED")) {
+    return (
+      <Page title="피드백" back="/">
+        <Card><p className="text-sm text-[#6A4A4C]">참석을 취소한 모임이라 피드백은 남기지 않아도 돼요. 다음 식탁에서 만나요!</p></Card>
+      </Page>
+    );
+  }
 
   if (!st.can_feedback) {
     return (

@@ -13,3 +13,11 @@ export async function deleteAccount(formData: FormData) {
   await supabase.auth.signOut();
   redirect("/?bye=1");
 }
+
+// 친구에게 받은 초대 코드 넣기 (첫 모임 전까지)
+export async function enterReferral(formData: FormData) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("apply_referral", { p_code: String(formData.get("code") ?? "") });
+  if (error) redirect(`/profile?error=${encodeURIComponent(errorText(error.message))}`);
+  redirect("/profile?ref_ok=1");
+}

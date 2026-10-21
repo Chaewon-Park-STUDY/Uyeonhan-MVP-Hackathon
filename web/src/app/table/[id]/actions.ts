@@ -16,15 +16,18 @@ export async function moreTopics(formData: FormData) {
   const { data: info } = await supabase.rpc("table_info", { p_table_id: tableId }).maybeSingle<{
     room_id: string; shared_interests: string[] | null;
   }>();
-  if (!info?.room_id) return;
+  const back = (msg: string) => redirect(`/table/${tableId}?error=${encodeURIComponent(msg)}`);
+  if (!info?.room_id) back("단체방을 찾지 못했어요. 잠시 후 다시 시도해 주세요.");
+  const st = (await supabase.rpc("my_table_status", { p_table: tableId }).maybeSingle<{ attendance: string }>()).data;
+  if (st?.attendance?.startsWith("CANCELED")) back("참석을 취소한 모임이라 대화 주제를 받을 수 없어요.");
 
   const { data: intro } = await supabase.rpc("table_intro", { p_table_id: tableId });
   const members = (intro ?? []) as { mbti: string | null }[];
   const { data: prev } = await supabase.from("chat_messages").select("content")
-    .eq("room_id", info.room_id).eq("kind", "TOPIC");
-  if ((prev?.length ?? 0) >= MAX_TOPIC_MESSAGES) return;
+    .eq("room_id", info!.room_id).eq("kind", "TOPIC");
+  if ((prev?.length ?? 0) >= MAX_TOPIC_MESSAGES) back("대화 주제는 모임마다 3번까지 더 받을 수 있어요.");
 
-  const interests = info.shared_interests ?? [];
+  const interests = info!.shared_interests ?? [];
   const eCount = members.filter((m) => m.mbti?.startsWith("E")).length;
   const ai = await geminiTopics(interests, eCount, members.length);
   const topics = ai ?? templateTopics(interests, (prev ?? []).map((p) => p.content));
@@ -33,7 +36,8 @@ export async function moreTopics(formData: FormData) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) redirect(`/table/${tableId}?error=${encodeURIComponent("지금은 대화 주제를 더 받을 수 없어요. 잠시 후 다시 시도해 주세요.")}`);
   const admin = createAdmin(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false } });
-  await admin.from("chat_messages").insert({ room_id: info.room_id, kind: "TOPIC", content });
+  const { error: insErr } = await admin.from("chat_messages").insert({ room_id: info!.room_id, kind: "TOPIC", content });
+  if (insErr) back("대화 주제를 올리지 못했어요. 잠시 후 다시 시도해 주세요.");
   revalidatePath(`/table/${tableId}`);
 }
 

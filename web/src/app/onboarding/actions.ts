@@ -27,24 +27,31 @@ export async function saveProfile(formData: FormData) {
     privacy_agreed: formData.get("privacy") === "on",
   };
 
+  const refQ = one("ref") ? `?ref=${encodeURIComponent(one("ref"))}&` : "?";
   if (!payload.name || !payload.birth_year || !payload.gender) {
-    redirect(`/onboarding?error=${encodeURIComponent("이름, 출생연도, 성별은 꼭 입력해 주세요.")}`);
+    redirect(`/onboarding${refQ}error=${encodeURIComponent("이름, 출생연도, 성별은 꼭 입력해 주세요.")}`);
   }
   if (!/^[EI][SN][TF][JP]$/.test(payload.mbti)) {
-    redirect(`/onboarding?error=${encodeURIComponent("MBTI 네 가지를 모두 골라 주세요.")}`);
+    redirect(`/onboarding${refQ}error=${encodeURIComponent("MBTI 네 가지를 모두 골라 주세요.")}`);
   }
   if (payload.interests.length === 0) {
-    redirect(`/onboarding?error=${encodeURIComponent("관심사를 하나 이상 골라 주세요.")}`);
+    redirect(`/onboarding${refQ}error=${encodeURIComponent("관심사를 하나 이상 골라 주세요.")}`);
   }
   if (payload.self_traits.length < 1 || payload.self_traits.length > 2) {
-    redirect(`/onboarding?error=${encodeURIComponent("나와 닮은 동물을 1~2장 골라 주세요.")}`);
+    redirect(`/onboarding${refQ}error=${encodeURIComponent("나와 닮은 동물을 1~2장 골라 주세요.")}`);
   }
   if (payload.desired_traits.length < 1 || payload.desired_traits.length > 3) {
-    redirect(`/onboarding?error=${encodeURIComponent("함께하고 싶은 동물을 1~3장 골라 주세요.")}`);
+    redirect(`/onboarding${refQ}error=${encodeURIComponent("함께하고 싶은 동물을 1~3장 골라 주세요.")}`);
   }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("upsert_my_profile", { p: payload });
-  if (error) redirect(`/onboarding?error=${encodeURIComponent(errorText(error.message))}`);
-  redirect(one("return_to") === "/profile?saved=1" ? "/profile?saved=1" : "/apply?welcome=1");
+  if (error) redirect(`/onboarding${refQ}error=${encodeURIComponent(errorText(error.message))}`);
+  // 초대 코드: 실패해도 가입은 그대로 진행하고 이유만 알려 줌
+  let refNote = "";
+  if (one("ref")) {
+    const { error: refErr } = await supabase.rpc("apply_referral", { p_code: one("ref") });
+    refNote = refErr ? `&ref_error=${encodeURIComponent(errorText(refErr.message))}` : "&ref_ok=1";
+  }
+  redirect(one("return_to") === "/profile?saved=1" ? "/profile?saved=1" : `/apply?welcome=1${refNote}`);
 }
