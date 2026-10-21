@@ -74,7 +74,7 @@ export default async function FeedbackPage({ params, searchParams }: {
 
         {others.length > 0 && (
           <Card>
-            <Label hint="상대방에게는 절대 공개되지 않아요">함께한 사람들</Label>
+            <Label hint="내가 고른 답은 함께한 사람들에게 보이지 않아요">함께한 사람들</Label>
             <div className="space-y-3">
               {others.map((m) => (
                 <div key={m.profile_id}>

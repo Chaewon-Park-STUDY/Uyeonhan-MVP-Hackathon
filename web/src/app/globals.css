@@ -27,7 +27,8 @@ body {
   word-break: keep-all;
   overflow-wrap: break-word;
 }
-p, li, h1, h2, h3 { text-wrap: pretty; }
+/* 두세 줄짜리 안내 문구는 줄 길이를 고르게 → 마지막 줄에 한두 어절만 남지 않게 */
+p, li, h1, h2, h3, label, summary { text-wrap: balance; }
 
 .font-brand {
   font-family: var(--font-brand);

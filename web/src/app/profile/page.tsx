@@ -164,7 +164,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       </Card>
 
       <Card className="mt-4 text-xs text-[#8B6A66]">
-        <p>같은 테이블 참가자에게는 <b>이름 첫 글자, 연령대, MBTI, 관심사, 나와 닮은 동물</b>만 보여요.</p>
+        <p>같은 테이블 사람들에게는 <b>이름 첫 글자·연령대·MBTI·관심사·닮은 동물</b>만 보여요.</p>
         <p className="mt-1">연락처·출생연도·직업·음식 정보는 매칭과 식당 선정에만 쓰여요.</p>
       </Card>
 
