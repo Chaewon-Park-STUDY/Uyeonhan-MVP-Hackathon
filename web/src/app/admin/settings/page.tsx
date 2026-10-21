@@ -24,12 +24,13 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const profIds = [...new Set((logs ?? []).filter((l) => l.entity === "profiles").map((l) => l.entity_id)
     .concat((logs ?? []).map((l) => /user ([0-9a-f-]{36})/.exec(l.new_value ?? "")?.[1]).filter(Boolean) as string[]))];
   const [{ data: appNames }, { data: profNames }] = await Promise.all([
-    supabase.from("applications").select("id, profiles(name)").in("id", appIds.length ? appIds : ["00000000-0000-0000-0000-000000000000"]),
-    supabase.from("profiles").select("id, name").in("id", profIds.length ? profIds : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.from("applications").select("id, profiles(name, gender, birth_year)").in("id", appIds.length ? appIds : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.from("profiles").select("id, name, gender, birth_year").in("id", profIds.length ? profIds : ["00000000-0000-0000-0000-000000000000"]),
   ]);
-  const nameOf = new Map<string, string>([
-    ...((appNames ?? []) as unknown as { id: string; profiles: { name: string } | null }[]).map((a) => [a.id, a.profiles?.name ?? ""] as [string, string]),
-    ...((profNames ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name] as [string, string]),
+  type P = { name: string; gender: string; birth_year: number };
+  const people: Record<string, P> = Object.fromEntries([
+    ...((appNames ?? []) as unknown as { id: string; profiles: P | null }[]).filter((a) => a.profiles).map((a) => [a.id, a.profiles!]),
+    ...((profNames ?? []) as ({ id: string } & P)[]).map((p) => [p.id, { name: p.name, gender: p.gender, birth_year: p.birth_year }]),
   ]);
 
   return (
@@ -48,7 +49,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             ))}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">테이블 확정 최소 점수 (100점 만점, 낮추면 더 많이 확정)</span>
+            <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">테이블 확정 최소 점수 (기준 충족도 100점 만점 · 낮추면 더 많이 확정, 높이면 더 까다롭게)</span>
               <input name="min_score" type="number" step="5" min="0" max="100" defaultValue={Math.round(Number(m.min_score ?? 0.45) * 100)} className={`${inputCls} py-2`} /></label>
             <label className="text-xs"><span className="mb-1 block text-[#6A4A4C]">최대 나이 차이 (필수 조건)</span>
               <input name="max_age_gap" type="number" min="3" max="20" defaultValue={Number(m.max_age_gap ?? 8)} className={`${inputCls} py-2`} /></label>
@@ -89,7 +90,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         </Card>
       </div>
     </div>
-    <HistoryCard logs={(logs ?? []) as Log[]} settings={(shist ?? []) as { key: string; actor: string; at: string }[]} names={Object.fromEntries(nameOf)} />
+    <HistoryCard logs={(logs ?? []) as Log[]} settings={(shist ?? []) as { key: string; actor: string; at: string }[]} people={people} />
     </div>
   );
 }

@@ -63,8 +63,9 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {Object.entries(REGION_LABEL).map(([code, label]) => {
             const ts = allTables.filter((t) => t.event_slots.region_code === code);
-            const people = ts.reduce((a, t) => a + t.table_members.length, 0);
-            const f = ts.reduce((a, t) => a + t.table_members.filter((m) => m.profiles.gender === "F").length, 0);
+            const act = (t: T) => t.table_members.filter((m) => !["CANCELED_EARLY", "CANCELED_LATE"].includes(m.attendance));
+            const people = ts.reduce((a, t) => a + act(t).length, 0);
+            const f = ts.reduce((a, t) => a + act(t).filter((m) => m.profiles.gender === "F").length, 0);
             const avg = ts.length ? ts.reduce((a, t) => a + (t.score ?? 0), 0) / ts.length : 0;
             const issues = ts.reduce((a, t) => a + t.table_members.filter((m) => ["NO_SHOW", "CANCELED_LATE", "CANCELED_EARLY"].includes(m.attendance)).length, 0);
             const col = REGION_COLOR[code];
@@ -79,7 +80,7 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
                 </div>
                 <p className="mt-1 text-3xl font-bold" style={{ color: col.main }}>{ts.length}<span className="ml-1 text-sm font-normal text-[#6A4A4C]">테이블 · {people}명</span></p>
                 <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-                  <span className="rounded-full px-2 py-0.5" style={{ background: col.soft, color: col.main }}>평균 {avg ? avg.toFixed(1) : "-"}점</span>
+                  <span className="rounded-full px-2 py-0.5" style={{ background: col.soft, color: col.main }}>예상 만족도 평균 {avg ? avg.toFixed(1) : "-"}/5</span>
                   <span className="rounded-full bg-[#FCE4EC] px-2 py-0.5 text-[#C2185B]">여 {f}</span>
                   <span className="rounded-full bg-[#E3F2FD] px-2 py-0.5 text-[#1565C0]">남 {people - f}</span>
                   {issues > 0 && <span className="rounded-full bg-[#FCEDE8] px-2 py-0.5 text-[#A2412A]">취소·노쇼 {issues}</span>}
@@ -94,8 +95,10 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
       {tables.length > 0 && <p className="text-sm text-[#8B6A66]">테이블을 누르면 멤버와 이 테이블을 만든 이유가 펼쳐져요.</p>}
       <div className="space-y-2.5">
         {tables.map((t, i) => {
-          const ages = t.table_members.map((m) => year - m.profiles.birth_year);
-          const f = t.table_members.filter((m) => m.profiles.gender === "F").length;
+          // 취소한 사람은 인원·성비·나이 계산에서 뺌
+          const active = t.table_members.filter((m) => !["CANCELED_EARLY", "CANCELED_LATE"].includes(m.attendance));
+          const ages = (active.length ? active : t.table_members).map((m) => year - m.profiles.birth_year);
+          const f = active.filter((m) => m.profiles.gender === "F").length;
           const issues = t.table_members.filter((m) => ["NO_SHOW", "CANCELED_LATE", "CANCELED_EARLY"].includes(m.attendance)).length;
           const score = t.score ?? 0;
           const grade = score >= 4.3 ? ["아주 잘 맞음", "bg-[#E3F1E4] text-[#2F6B3A]"] : score >= 4.0 ? ["잘 맞음", "bg-[#F4E4DE] text-[#7A1F2B]"] : ["보통", "bg-[#EEE9E4] text-[#8A7F77]"];
@@ -104,9 +107,9 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
               <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
                 <span className="text-base font-bold">#{i + 1} {REGION_LABEL[t.event_slots.region_code]}</span>
                 <span className="text-xl tracking-tight">{t.table_members.map((m) => animalOf(byRarity(m.profiles.self_traits)[0])?.emoji ?? "🙂").join("")}</span>
-                <span className="text-sm text-[#6A4A4C]">{t.table_members.length}명 · 여 {f} 남 {t.table_members.length - f} · {Math.min(...ages)}~{Math.max(...ages)}세</span>
+                <span className="text-sm text-[#6A4A4C]">{active.length}명 · 여 {f} 남 {active.length - f} · {Math.min(...ages)}~{Math.max(...ages)}세</span>
                 <span className="text-sm text-[#6A4A4C]">📍 {t.venues?.name?.replace(/^\[샘플\]\s*/, "") ?? "식당 미배정"}</span>
-                <span className={`ml-auto rounded-full px-3 py-1 text-sm font-semibold ${grade[1]}`}>{grade[0]} · {score.toFixed(1)}점</span>
+                <span className={`ml-auto rounded-full px-3 py-1 text-sm font-semibold ${grade[1]}`}>{grade[0]} · 예상 만족도 {score.toFixed(1)}/5</span>
                 {issues > 0 && <span className="rounded-full bg-[#FCEDE8] px-3 py-1 text-sm text-[#A2412A]">취소·노쇼 {issues}</span>}
                 <span className="text-[#B7A3A0] transition group-open:rotate-180">▾</span>
               </summary>
@@ -136,7 +139,7 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
                   ))}
                 </ul>
                 <div className="text-sm">
-                  <p className="mb-2 font-semibold">이 테이블을 만든 이유 <span className="font-normal text-[#8B6A66]">(각 100점 만점)</span></p>
+                  <p className="mb-2 font-semibold">이 테이블을 만든 이유 <span className="font-normal text-[#8B6A66]">(기준별 충족도, 각 100점 만점)</span></p>
                   <div className="space-y-1.5">
                     {Object.entries(FEATURE_LABEL).map(([k, label]) => {
                       const v = Math.round((t.score_breakdown?.[k] ?? 0) * 100);
@@ -153,9 +156,9 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
                     })}
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg bg-[#FBF7F0] px-3 py-2 text-xs text-[#6A4A4C]">
-                    <span>인원 <b>{t.table_members.length}명</b> (4~6명 ✓)</span>
+                    <span>인원 <b>{active.length}명</b> {active.length >= 4 && active.length <= 6 ? "(4~6명 ✓)" : <b className="text-[#A2412A]">(4명 미만 ✗ — 처리대기함 확인)</b>}</span>
                     <span>연령 {Math.min(...ages)}~{Math.max(...ages)}세 · 차이 <b>{Math.max(...ages) - Math.min(...ages)}살</b> {Math.max(...ages) - Math.min(...ages) <= 8 ? "✓" : "✗"}</span>
-                    <span>성비 여 {f} : 남 {t.table_members.length - f}</span>
+                    <span>성비 여 {f} : 남 {active.length - f}</span>
                     <span>MBTI {t.table_members.map((m) => m.profiles.mbti ?? "-").join(" ")}</span>
                     <span>자동 확정 {t.confirmed_at ? new Date(t.confirmed_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}</span>
                     <span>단체방 {t.chat_rooms ? `✓ 메시지 ${t.chat_rooms.chat_messages?.[0]?.count ?? 0}개` : "✗ 없음"}</span>

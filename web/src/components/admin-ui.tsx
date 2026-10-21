@@ -103,3 +103,14 @@ export function FilterRow({ label, children }: { label: string; children: ReactN
     </div>
   );
 }
+
+// 성별·나이 배지 (사람 목록 공통)
+export function GenderTag({ gender, birthYear }: { gender?: string | null; birthYear?: number | null }) {
+  if (!gender) return null;
+  const f = gender === "F";
+  return (
+    <span className={`ml-1.5 inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 align-middle text-[11px] font-semibold ${f ? "bg-[#FCE4EC] text-[#C2185B]" : "bg-[#E3F2FD] text-[#1565C0]"}`}>
+      {f ? "여" : "남"}{birthYear ? ` · ${new Date().getFullYear() - birthYear}세` : ""}
+    </span>
+  );
+}

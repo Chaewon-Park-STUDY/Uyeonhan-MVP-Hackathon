@@ -1,4 +1,5 @@
 import { AdminTitle, FilterChips, FilterRow, Pager, Pill, TableWrap, shortDt, td, th } from "@/components/admin-ui";
+import { GenderTag } from "@/components/admin-ui";
 import { PendingButton } from "@/components/pending";
 import { requireAdmin } from "@/lib/admin";
 import { type MsgOverride, NOTI_TEMPLATES, notiText } from "@/lib/labels";
@@ -6,7 +7,7 @@ import { saveMessage } from "../actions";
 
 type Stat = { template: string; total: number; sent: number; pending: number; failed: number; last_sent: string | null };
 type ChatStat = { kind: string; total: number; rooms: number; last_at: string | null };
-type Noti = { id: string; template: string; scheduled_at: string; sent_at: string | null; attempts: number; last_error: string | null; profiles: { name: string } | null };
+type Noti = { id: string; template: string; scheduled_at: string; sent_at: string | null; attempts: number; last_error: string | null; profiles: { name: string; gender: string; birth_year: number } | null };
 
 const CHAT_KIND: Record<string, [string, string]> = {
   NOTICE: ["환영·장소 안내", "테이블 확정 즉시"], CURATION: ["이 테이블은요 (조합 큐레이션)", "테이블 확정 즉시"],
@@ -23,7 +24,7 @@ export default async function Messages({ searchParams }: { searchParams: Promise
   const [{ data: stats }, { data: chat }, { data: recent }, { data: ov }] = await Promise.all([
     supabase.rpc("admin_message_stats"),
     supabase.rpc("admin_chat_stats"),
-    supabase.from("notifications").select("id, template, scheduled_at, sent_at, attempts, last_error, profiles(name)")
+    supabase.from("notifications").select("id, template, scheduled_at, sent_at, attempts, last_error, profiles(name, gender, birth_year)")
       .order("scheduled_at", { ascending: false }).limit(1000),
     supabase.rpc("message_overrides"),
   ]);
@@ -34,7 +35,18 @@ export default async function Messages({ searchParams }: { searchParams: Promise
   const hist = allHist.filter((n) => (!sp.tpl || n.template === sp.tpl) &&
     (!sp.st || (sp.st === "sent" ? !!n.sent_at : sp.st === "failed" ? !n.sent_at && !!n.last_error : !n.sent_at && !n.last_error)));
   const page = Math.max(1, Number(sp.page) || 1);
-  const histPage = hist.slice((page - 1) * 20, page * 20);
+  // 날짜 × 알림 종류로 묶기 (최신순)
+  const kd = (iso: string) => new Date(new Date(iso).getTime() + 9 * 3600e3).toISOString().slice(0, 10);
+  const gmap = new Map<string, { key: string; day: string; template: string; items: Noti[] }>();
+  for (const n of hist) {
+    const key = `${kd(n.scheduled_at)}|${n.template}`;
+    const g = gmap.get(key) ?? { key, day: kd(n.scheduled_at), template: n.template, items: [] };
+    g.items.push(n);
+    gmap.set(key, g);
+  }
+  const groups = [...gmap.values()].sort((a, b) => b.day.localeCompare(a.day) || a.template.localeCompare(b.template))
+    .map((g) => ({ ...g, dayLabel: new Date(`${g.day}T12:00:00+09:00`).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "short" }) }));
+  const groupPage = groups.slice((page - 1) * 10, page * 10);
   const label = (code: string) => NOTI_TEMPLATES.find((t) => t.code === code)?.when ?? code;
 
   return (
@@ -96,7 +108,8 @@ export default async function Messages({ searchParams }: { searchParams: Promise
       </section>
 
       <section>
-        <h2 className="mb-2 font-semibold">발송 이력 <span className="text-sm font-normal text-[#8B6A66]">실패하면 5분마다 다시 시도, 3번 실패하면 처리대기함으로</span></h2>
+        <h2 className="font-semibold">자동 발송 기록</h2>
+        <p className="mb-2 text-sm text-[#8B6A66]">운영자가 보낸 게 아니라, 시스템이 정해진 때에 참가자에게 <b>자동으로 보낸 앱 알림</b>이에요. 날짜·알림별로 묶었고, 누르면 받은 사람이 보여요. 실패하면 5분마다 다시 보내고, 3번 실패하면 처리대기함에 올라가요.</p>
         <div className="mb-2 space-y-2 rounded-2xl bg-white p-3 shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
           <FilterRow label="상태">
             <FilterChips base="/admin/messages" param="st" current={sp.st} keep={{ tpl: sp.tpl }}
@@ -107,21 +120,38 @@ export default async function Messages({ searchParams }: { searchParams: Promise
                          options={[["", "전체"], ...usedTpls.map((c) => [c, label(c)] as [string, string])]} />
           </FilterRow>
         </div>
-        <TableWrap min={720}>
-          <thead><tr><th className={th}>받는 사람</th><th className={th}>알림</th><th className={th}>예약 시각</th><th className={th}>발송</th><th className={th}>시도</th></tr></thead>
-          <tbody>
-            {histPage.map((n) => (
-              <tr key={n.id}>
-                <td className={td}>{n.profiles?.name}</td>
-                <td className={td}>{label(n.template)}</td>
-                <td className={`${td} text-xs`}>{shortDt(n.scheduled_at)}</td>
-                <td className={td}>{n.sent_at ? <Pill tone="ok">보냄 {shortDt(n.sent_at)}</Pill> : n.last_error ? <Pill tone="warn">실패 ({n.last_error})</Pill> : <Pill tone="wait">예약됨</Pill>}</td>
-                <td className={td}>{n.attempts}</td>
-              </tr>
-            ))}
-          </tbody>
-        </TableWrap>
-        <div className="mt-3"><Pager base="/admin/messages" page={page} total={hist.length} keep={{ tpl: sp.tpl, st: sp.st }} /></div>
+        <div className="space-y-2">
+          {groupPage.length === 0 && <p className="rounded-2xl bg-white p-4 text-sm text-[#8B6A66]">해당하는 기록이 없어요.</p>}
+          {groupPage.map((g) => {
+            const sent = g.items.filter((n) => n.sent_at).length;
+            const failed = g.items.filter((n) => !n.sent_at && n.last_error).length;
+            const pending = g.items.length - sent - failed;
+            return (
+              <details key={g.key} className="group rounded-2xl bg-white shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
+                <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm">
+                  <span className="w-28 font-semibold">{g.dayLabel}</span>
+                  <span className="font-medium">{label(g.template)}</span>
+                  <span className="text-[#8B6A66]">{g.items.length}명</span>
+                  <span className="ml-auto flex gap-1">
+                    {sent > 0 && <Pill tone="ok">보냄 {sent}</Pill>}
+                    {pending > 0 && <Pill tone="wait">예약 {pending}</Pill>}
+                    {failed > 0 && <Pill tone="warn">실패 {failed}</Pill>}
+                  </span>
+                  <span className="text-[#B7A3A0] transition group-open:rotate-180">▾</span>
+                </summary>
+                <div className="flex flex-wrap gap-1.5 border-t border-[#F4ECE6] px-4 py-3 text-sm">
+                  {g.items.map((n) => (
+                    <span key={n.id} title={n.sent_at ? `보냄 ${shortDt(n.sent_at)}` : n.last_error ? `실패: ${n.last_error}` : `예약 ${shortDt(n.scheduled_at)}`}
+                          className={`rounded-full border px-2 py-0.5 ${n.sent_at ? "border-[#E9DCD3]" : n.last_error ? "border-[#E8B4A6] bg-[#FCEDE8]" : "border-dashed border-[#D9C9B8]"}`}>
+                      {n.profiles?.name}<GenderTag gender={n.profiles?.gender} birthYear={n.profiles?.birth_year} />
+                    </span>
+                  ))}
+                </div>
+              </details>
+            );
+          })}
+        </div>
+        <div className="mt-3"><Pager base="/admin/messages" page={page} total={groups.length} size={10} keep={{ tpl: sp.tpl, st: sp.st }} /></div>
       </section>
     </div>
   );

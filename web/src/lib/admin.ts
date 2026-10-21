@@ -11,7 +11,7 @@ export async function requireAdmin() {
 }
 
 // Python 엔진(/api/match, /api/learn) 호출 — 비밀키는 서버에서만 사용
-export async function callEngine(path: "match" | "learn", query: Record<string, string> = {}) {
+export async function callEngine(path: "match" | "learn", query: Record<string, string> = {}, timeoutMs = 55000) {
   const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   const host = prod ?? (await headers()).get("host");
   const proto = host?.startsWith("localhost") ? "http" : "https";
@@ -21,7 +21,7 @@ export async function callEngine(path: "match" | "learn", query: Record<string, 
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.MATCH_SECRET ?? ""}` },
       cache: "no-store",
-      signal: AbortSignal.timeout(55000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     return (await res.json()) as Record<string, unknown>;
   } catch (e) {

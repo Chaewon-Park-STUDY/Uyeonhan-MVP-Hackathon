@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminTitle, Pill, Stat, TableWrap, kstDate, shortDt, td, th } from "@/components/admin-ui";
+import { GenderTag } from "@/components/admin-ui";
 import { requireAdmin } from "@/lib/admin";
 import { REGION_LABEL } from "@/lib/labels";
 
@@ -7,10 +8,10 @@ const CHOICE: Record<string, string> = { MOVE_DATE: "다른 날짜로 이동", M
 
 type Run = { id: string; run_key: string; algorithm_version: string; started_at: string; finished_at: string | null; error: string | null;
   stats: Record<string, number | null | Record<string, number>> | null };
-type Failed = { id: string; match_status: string; profiles: { name: string };
+type Failed = { id: string; match_status: string; profiles: { name: string; gender: string; birth_year: number };
   match_resolutions: { choice: string | null; resolved_at: string | null; offered_slots: string[]; created_at: string; reason: string | null } | null;
   application_slots: { event_slots: { starts_at: string; region_code: string } | null }[] };
-type Moved = { user_id: string; reallocation_count: number; placement_reason: string | null; profiles: { name: string };
+type Moved = { user_id: string; reallocation_count: number; placement_reason: string | null; profiles: { name: string; gender: string; birth_year: number };
   dining_tables: { status: string; event_slots: { starts_at: string; region_code: string } | null } | null };
 
 // PRD §11 자동 매칭 모니터: 실행 결과, 재배치 내역, 자동 확정 테이블, 매칭 실패자
@@ -33,9 +34,9 @@ export default async function Runs({ searchParams }: { searchParams: Promise<{ r
   const { supabase } = await requireAdmin();
   const [{ data: runs }, { data: failed }, { data: moved }] = await Promise.all([
     supabase.from("match_runs").select("id, run_key, algorithm_version, started_at, finished_at, error, stats").order("started_at", { ascending: false }).limit(20),
-    supabase.from("applications").select("id, match_status, profiles(name), match_resolutions(choice, resolved_at, offered_slots, created_at, reason), application_slots(event_slots(starts_at, region_code))")
-      .in("match_status", ["ALTERNATIVE_OFFERED", "NO_MATCH"]).order("updated_at", { ascending: false }).limit(100),
-    supabase.from("table_members").select("user_id, reallocation_count, placement_reason, profiles(name), dining_tables(status, event_slots(starts_at, region_code))")
+    supabase.from("applications").select("id, match_status, profiles(name, gender, birth_year), match_resolutions(choice, resolved_at, offered_slots, created_at, reason), application_slots(event_slots(starts_at, region_code))")
+      .in("match_status", ["ALTERNATIVE_OFFERED", "NO_MATCH"]).eq("application_status", "SUBMITTED").order("updated_at", { ascending: false }).limit(100),
+    supabase.from("table_members").select("user_id, reallocation_count, placement_reason, profiles(name, gender, birth_year), dining_tables(status, event_slots(starts_at, region_code))")
       .gt("reallocation_count", 0).limit(100),
   ]);
   const list = (runs ?? []) as Run[];
@@ -44,6 +45,9 @@ export default async function Runs({ searchParams }: { searchParams: Promise<{ r
   const num = (r: Run, k: string) => (typeof r.stats?.[k] === "number" ? (r.stats[k] as number) : 0);
   const totalApps = list.reduce((a, r) => a + num(r, "applications"), 0);
   const totalPlaced = list.reduce((a, r) => a + num(r, "placed"), 0);
+  // 대신 고를 수 있는 회차 이름 (매칭이 안 된 사람에게 자동으로 제안한 다른 날짜·지역)
+  const { data: allSlots } = await supabase.from("event_slots").select("id, starts_at, region_code");
+  const slotName = new Map((allSlots ?? []).map((x) => [x.id, `${kstDate(x.starts_at).slice(5).replace("-", "/")} ${REGION_LABEL[x.region_code]}`]));
   const catOf = (f: Failed) => splitReason(f.match_resolutions?.reason)[0];
   const cats = [...new Set(fails.map(catOf))];
   const shownFails = sp.reason ? fails.filter((f) => catOf(f) === sp.reason) : fails;
@@ -102,7 +106,7 @@ export default async function Runs({ searchParams }: { searchParams: Promise<{ r
               {moves.length === 0 && <tr><td className={td} colSpan={4}>재배치된 사람이 없어요.</td></tr>}
               {moves.map((m, i) => (
                 <tr key={i}>
-                  <td className={td}>{m.profiles.name}</td>
+                  <td className={`${td} whitespace-nowrap`}>{m.profiles.name}<GenderTag gender={m.profiles.gender} birthYear={m.profiles.birth_year} /></td>
                   <td className={`${td} text-xs`}>{m.dining_tables?.event_slots ? `${kstDate(m.dining_tables.event_slots.starts_at).slice(5)} ${REGION_LABEL[m.dining_tables.event_slots.region_code]}` : "-"}</td>
                   <td className={td}>{m.reallocation_count}회</td>
                   <td className={`${td} text-xs text-[#6A4A4C]`}>{m.placement_reason || "-"}</td>
@@ -122,14 +126,14 @@ export default async function Runs({ searchParams }: { searchParams: Promise<{ r
             ))}
           </div>
           <TableWrap min={760}>
-            <thead><tr><th className={th}>이름</th><th className={th}>희망 회차</th><th className={th}>실패 사유</th><th className={th}>실패 시각</th><th className={th}>제안 회차</th><th className={th}>처리</th></tr></thead>
+            <thead><tr><th className={th}>이름</th><th className={th}>희망 회차</th><th className={th}>실패 사유</th><th className={th}>실패 시각</th><th className={th}>대신 고를 수 있는 회차</th><th className={th}>처리</th></tr></thead>
             <tbody>
               {shownFails.length === 0 && <tr><td className={td} colSpan={6}>해당하는 사람이 없어요.</td></tr>}
               {shownFails.map((f) => {
                 const [cat, detail] = splitReason(f.match_resolutions?.reason);
                 return (
                   <tr key={f.id}>
-                    <td className={`${td} font-medium`}>{f.profiles.name}</td>
+                    <td className={`${td} whitespace-nowrap font-medium`}>{f.profiles.name}<GenderTag gender={f.profiles.gender} birthYear={f.profiles.birth_year} /></td>
                     <td className={`${td} text-xs`}>{f.application_slots.filter((s) => s.event_slots).map((s, i) => (
                       <div key={i}>{kstDate(s.event_slots!.starts_at).slice(5)} {REGION_LABEL[s.event_slots!.region_code]}</div>))}</td>
                     <td className={td}>
@@ -137,7 +141,10 @@ export default async function Runs({ searchParams }: { searchParams: Promise<{ r
                       <span className="text-xs text-[#6A4A4C]">{detail}</span>
                     </td>
                     <td className={`${td} text-xs`}>{shortDt(f.match_resolutions?.created_at)}</td>
-                    <td className={td}>{f.match_resolutions?.offered_slots.length ?? 0}개</td>
+                    <td className={`${td} text-xs`}>
+                      {(f.match_resolutions?.offered_slots ?? []).map((id) => slotName.get(id)).filter(Boolean).map((n, i) => <div key={i}>{n}</div>)}
+                      {!(f.match_resolutions?.offered_slots ?? []).length && <span className="text-[#8B6A66]">없음</span>}
+                    </td>
                     <td className={td}>
                       <Pill tone={f.match_resolutions?.resolved_at ? "ok" : "wait"}>{f.match_resolutions?.resolved_at ? choice(f.match_resolutions.choice) : "선택 대기"}</Pill>
                     </td>

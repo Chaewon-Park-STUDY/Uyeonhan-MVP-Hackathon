@@ -1,20 +1,21 @@
 import { AdminTitle, FilterChips, Pill, Stat, TableWrap, shortDt, td, th } from "@/components/admin-ui";
+import { GenderTag } from "@/components/admin-ui";
 import { requireAdmin } from "@/lib/admin";
 import { PASSES, PAYMENT_LABEL, won } from "@/lib/labels";
 
 type Pay = { id: string; amount: number; discount_amount: number; method: string; status: string; refund_amount: number | null;
   created_at: string; refunded_at: string | null;
-  applications: { id: string; match_status: string; profiles: { name: string } | null; passes: { type: string } | null } | null };
-type Pass = { id: string; type: string; remaining: number | null; expires_at: string | null; extended_days: number; created_at: string; profiles: { name: string } | null };
+  applications: { id: string; match_status: string; profiles: { name: string; gender: string; birth_year: number } | null; passes: { type: string } | null } | null };
+type Pass = { id: string; type: string; remaining: number | null; expires_at: string | null; extended_days: number; created_at: string; profiles: { name: string; gender: string; birth_year: number } | null };
 
 // PRD §11 결제·환불: 결제·자동 환불·환불 실패·이용권 사용 내역 조회
 export default async function Payments({ searchParams }: { searchParams: Promise<{ status?: string; view?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const [{ data: pays }, { data: passes }] = await Promise.all([
-    supabase.from("payments").select("id, amount, discount_amount, method, status, refund_amount, created_at, refunded_at, applications(id, match_status, profiles(name), passes(type))")
+    supabase.from("payments").select("id, amount, discount_amount, method, status, refund_amount, created_at, refunded_at, applications(id, match_status, profiles(name, gender, birth_year), passes(type))")
       .order("created_at", { ascending: false }).limit(1000),
-    supabase.from("passes").select("id, type, remaining, expires_at, extended_days, created_at, profiles(name)").order("created_at", { ascending: false }).limit(300),
+    supabase.from("passes").select("id, type, remaining, expires_at, extended_days, created_at, profiles(name, gender, birth_year)").order("created_at", { ascending: false }).limit(300),
   ]);
   const all = (pays ?? []) as unknown as Pay[];
   const list = sp.status ? all.filter((p) => p.status === sp.status) : all;
@@ -66,9 +67,9 @@ export default async function Payments({ searchParams }: { searchParams: Promise
                 </summary>
                 <ul className="divide-y divide-[#F4ECE6] border-t border-[#EFE3DC] px-5">
                   {xs.map((p) => (
-                    <li key={p.id} className="grid grid-cols-[64px_1fr_auto] items-center gap-3 py-2.5 text-sm md:grid-cols-[64px_120px_110px_1fr_auto]">
+                    <li key={p.id} className="grid grid-cols-[64px_1fr_auto] items-center gap-3 py-2.5 text-sm md:grid-cols-[64px_170px_110px_1fr_auto]">
                       <span className="text-xs text-[#8B6A66]">{timeOnly(p.created_at)}</span>
-                      <span className="font-medium">{p.applications?.profiles?.name ?? "-"}</span>
+                      <span className="whitespace-nowrap font-medium">{p.applications?.profiles?.name ?? "-"}<GenderTag gender={p.applications?.profiles?.gender} birthYear={p.applications?.profiles?.birth_year} /></span>
                       <span className="hidden text-xs md:block">
                         <span className="rounded-full bg-[#F4ECE6] px-2 py-0.5 text-[#6A4A4C]">{passName(p.applications?.passes?.type)}</span>
                       </span>
@@ -95,7 +96,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
             {((passes ?? []) as unknown as Pass[]).map((x) => (
               <tr key={x.id}>
                 <td className={`${td} text-xs`}>{shortDt(x.created_at)}</td>
-                <td className={td}>{x.profiles?.name ?? "-"}</td>
+                <td className={td}>{x.profiles?.name ?? "-"}<GenderTag gender={x.profiles?.gender} birthYear={x.profiles?.birth_year} /></td>
                 <td className={td}>{passName(x.type)}</td>
                 <td className={`${td} text-xs`}>{x.type === "SINGLE" ? `${x.remaining ?? 0}회 남음` : `${shortDt(x.expires_at)}까지`}</td>
                 <td className={`${td} text-xs`}>{x.extended_days ? `+${x.extended_days}일` : "-"}</td>

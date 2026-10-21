@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { AdminTitle, Pill, Stat, TableWrap, kstDate, shortDt, td, th } from "@/components/admin-ui";
+import { GenderTag } from "@/components/admin-ui";
 import { requireAdmin } from "@/lib/admin";
 import { REGION_LABEL } from "@/lib/labels";
 
 type F = { table_id: string; user_id: string; table_score: number | null; convo_score: number | null; venue_score: number | null;
   revisit_intent: number | null; recommend_intent: number | null; comment: string | null; created_at: string;
-  dining_tables: { event_slots: { starts_at: string; region_code: string } | null; venues: { name: string } | null } | null };
-type Pref = { kind: string; created_at: string; from: { name: string } | null; to: { name: string } | null };
+  dining_tables: { event_slots: { starts_at: string; region_code: string } | null; venues: { name: string; gender: string; birth_year: number } | null } | null };
+type Pref = { kind: string; created_at: string; from: { name: string; gender: string; birth_year: number } | null; to: { name: string; gender: string; birth_year: number } | null };
 type Rep = { id: string; reason: string; status: string; admin_action: string | null; created_at: string;
-  reporter: { name: string } | null; reported: { name: string; restricted_until: string | null } | null };
-type Blk = { created_at: string; blocker: { name: string } | null; blocked: { name: string } | null };
+  reporter: { name: string; gender: string; birth_year: number } | null; reported: { name: string; gender: string; birth_year: number; restricted_until: string | null } | null };
+type Blk = { created_at: string; blocker: { name: string; gender: string; birth_year: number } | null; blocked: { name: string; gender: string; birth_year: number } | null };
 
 const ACTION: Record<string, string> = { WARNING: "경고", RESTRICTED: "30일 제한", BANNED: "영구 제한", DISMISSED: "조치 없음" };
 const avg = (xs: (number | null)[]) => {
@@ -23,11 +24,11 @@ export default async function Feedback() {
   const [{ data: fb }, { data: prefs }, { data: reps }, { data: blks }, { count: attended }] = await Promise.all([
     supabase.from("feedback").select("table_id, user_id, table_score, convo_score, venue_score, revisit_intent, recommend_intent, comment, created_at, dining_tables(event_slots(starts_at, region_code), venues(name))")
       .order("created_at", { ascending: false }).limit(2000),
-    supabase.from("person_preferences").select("kind, created_at, from:profiles!person_preferences_from_user_fkey(name), to:profiles!person_preferences_to_user_fkey(name)")
+    supabase.from("person_preferences").select("kind, created_at, from:profiles!person_preferences_from_user_fkey(name, gender, birth_year), to:profiles!person_preferences_to_user_fkey(name, gender, birth_year)")
       .order("created_at", { ascending: false }).limit(200),
-    supabase.from("safety_reports").select("id, reason, status, admin_action, created_at, reporter:profiles!safety_reports_reporter_id_fkey(name), reported:profiles!safety_reports_reported_id_fkey(name, restricted_until)")
+    supabase.from("safety_reports").select("id, reason, status, admin_action, created_at, reporter:profiles!safety_reports_reporter_id_fkey(name, gender, birth_year), reported:profiles!safety_reports_reported_id_fkey(name, gender, birth_year, restricted_until)")
       .order("created_at", { ascending: false }).limit(100),
-    supabase.from("blocks").select("created_at, blocker:profiles!blocks_blocker_id_fkey(name), blocked:profiles!blocks_blocked_id_fkey(name)")
+    supabase.from("blocks").select("created_at, blocker:profiles!blocks_blocker_id_fkey(name, gender, birth_year), blocked:profiles!blocks_blocked_id_fkey(name, gender, birth_year)")
       .order("created_at", { ascending: false }).limit(100),
     supabase.from("table_members").select("user_id", { count: "exact", head: true }).eq("attendance", "ATTENDED"),
   ]);
@@ -82,8 +83,8 @@ export default async function Feedback() {
             {reports.map((r) => (
               <tr key={r.id}>
                 <td className={`${td} text-xs`}>{shortDt(r.created_at)}</td>
-                <td className={td}>{r.reporter?.name}</td>
-                <td className={td}>{r.reported?.name}</td>
+                <td className={td}>{r.reporter?.name}<GenderTag gender={r.reporter?.gender} birthYear={r.reporter?.birth_year} /></td>
+                <td className={td}>{r.reported?.name}<GenderTag gender={r.reported?.gender} birthYear={r.reported?.birth_year} /></td>
                 <td className={`${td} text-xs`}>{r.reason}</td>
                 <td className={td}>{r.status === "OPEN" ? <Pill tone="warn">검토 대기</Pill> : <Pill tone="ok">{ACTION[r.admin_action ?? ""] ?? "처리 완료"}</Pill>}</td>
               </tr>
@@ -100,7 +101,7 @@ export default async function Feedback() {
             <tbody>
               {pref.length === 0 && <tr><td className={td} colSpan={3}>아직 없어요.</td></tr>}
               {pref.map((p, i) => (
-                <tr key={i}><td className={td}>{p.from?.name}</td><td className={td}>{p.to?.name}</td>
+                <tr key={i}><td className={td}>{p.from?.name}<GenderTag gender={p.from?.gender} birthYear={p.from?.birth_year} /></td><td className={td}>{p.to?.name}<GenderTag gender={p.to?.gender} birthYear={p.to?.birth_year} /></td>
                   <td className={td}>{p.kind === "LIKE" ? <Pill tone="ok">또 만나고 싶어요</Pill> : <Pill tone="warn">다시는</Pill>}</td></tr>
               ))}
             </tbody>
@@ -113,7 +114,7 @@ export default async function Feedback() {
             <tbody>
               {blocks.length === 0 && <tr><td className={td} colSpan={3}>차단 기록이 없어요.</td></tr>}
               {blocks.map((b, i) => (
-                <tr key={i}><td className={td}>{b.blocker?.name}</td><td className={td}>{b.blocked?.name}</td><td className={`${td} text-xs`}>{shortDt(b.created_at)}</td></tr>
+                <tr key={i}><td className={td}>{b.blocker?.name}<GenderTag gender={b.blocker?.gender} birthYear={b.blocker?.birth_year} /></td><td className={td}>{b.blocked?.name}<GenderTag gender={b.blocked?.gender} birthYear={b.blocked?.birth_year} /></td><td className={`${td} text-xs`}>{shortDt(b.created_at)}</td></tr>
               ))}
             </tbody>
           </TableWrap>

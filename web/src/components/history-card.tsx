@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui";
+import { GenderTag } from "@/components/admin-ui";
 import { MATCH_LABEL, PAYMENT_LABEL } from "@/lib/labels";
 
 // ---------------------------------------------------------------------
@@ -51,15 +52,17 @@ const GROUP: Record<string, string> = {
   event_slots: "회차·식당", venues: "회차·식당", exception_cases: "신고·처리대기함", safety_reports: "신고·처리대기함", profiles: "회원",
 };
 
-export function HistoryCard({ logs, settings, names }: { logs: Log[]; settings: { key: string; actor: string; at: string }[]; names: Record<string, string> }) {
-  const nameOf = { get: (k: string) => names[k] };
+export function HistoryCard({ logs, settings, people }: {
+  logs: Log[]; settings: { key: string; actor: string; at: string }[];
+  people: Record<string, { name: string; gender: string; birth_year: number }>;
+}) {
   const [who, setWho] = useState("");
   const [grp, setGrp] = useState("");
   const [n, setN] = useState(10);
   const SETTING: Record<string, string> = { matching: "매칭 기준", demo: "시연 모드", no_show_sanction: "노쇼 규칙", message_overrides: "알림 문구", pricing: "요금" };
   const items = [
     ...logs.map((l) => {
-      const who = l.entity === "table_members" ? nameOf.get(/user ([0-9a-f-]{36})/.exec(l.new_value ?? "")?.[1] ?? "") : nameOf.get(l.entity_id);
+      const who = l.entity === "table_members" ? people[/user ([0-9a-f-]{36})/.exec(l.new_value ?? "")?.[1] ?? ""] : people[l.entity_id];
       const v = (x: string | null) => (l.field === "is_open" ? (x === "true" ? "모집 중" : "닫힘") : l.field === "is_active" ? (x === "true" ? "사용" : "중지") : val(x));
       return { grp: GROUP[l.entity] ?? "기타", at: l.at, actor: l.actor, what: `${ENTITY[l.entity] ?? l.entity}${FIELD[l.field] && ENTITY[l.entity] !== FIELD[l.field] ? ` · ${FIELD[l.field]}` : ""}`,
                who, from: v(l.old_value), to: v(l.new_value) };
@@ -96,7 +99,7 @@ export function HistoryCard({ logs, settings, names }: { logs: Log[]; settings: 
                 <span className="w-32 shrink-0 whitespace-nowrap text-xs text-[#8B6A66]">{time(it.at)}</span>
                 <span className={`w-20 shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-center text-xs ${cls}`}>{name}</span>
                 <span className="font-medium">{it.what}</span>
-                {it.who && <span className="text-[#6A4A4C]">{it.who}</span>}
+                {it.who && <span className="text-[#6A4A4C]">{it.who.name}<GenderTag gender={it.who.gender} birthYear={it.who.birth_year} /></span>}
                 <span className="ml-auto flex items-center gap-1.5">
                   {it.from && <span className="rounded bg-[#F4ECE6] px-1.5 py-0.5 text-xs text-[#8B6A66] line-through decoration-[#C9B8B3]">{it.from}</span>}
                   {it.from && <span className="text-[#B7A3A0]">→</span>}

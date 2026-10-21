@@ -6,10 +6,12 @@ import { TableIllustration } from "@/components/table-illustration";
 import { ProfileSummary } from "@/components/profile-summary";
 import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, mainAnimal, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
+import { CalendarBoard, type SlotStat } from "@/components/schedule-board";
 import { PendingButton } from "@/components/pending";
 import { cancelApplication } from "./actions";
 
 const WAITING_LIKE = ["WAITING", "TRANSFERRED", "REALLOCATING", "MATCHING"];
+const CANCELABLE = ["WAITING", "TRANSFERRED", "REALLOCATING"];
 
 type SlotRow = { id: string; starts_at: string; region_code: string; apply_deadline: string };
 type AppRow = {
@@ -44,7 +46,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     return (
       <>
         {sp.bye && <p className="mx-auto mt-3 max-w-md rounded-xl bg-[#E3F1E4] px-4 py-3 text-center text-sm text-[#2F6B3A]">탈퇴가 완료됐어요. 그동안 함께해 주셔서 고마워요.</p>}
-        <Landing slots={await openSlots(supabase)} />
+        <Landing slots={await openSlots(supabase)} stats={((await supabase.rpc("slot_stats")).data ?? []) as SlotStat[]} />
       </>
     );
   }
@@ -227,7 +229,7 @@ function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: In
           다음 안내: <b>{fmtDeadline(announce)}</b>에 자동 매칭 결과를 알려 드려요.
         </p>
       )}
-      {!canceled && WAITING_LIKE.includes(a.match_status) && announce && announce > new Date().toISOString() && (
+      {!canceled && CANCELABLE.includes(a.match_status) && announce && announce > new Date().toISOString() && (
         <form action={cancelApplication} className="mt-2 flex items-center justify-end gap-2 text-xs text-[#8B6A66]">
           <input type="hidden" name="id" value={a.id} />
           <label className="flex items-center gap-1"><input type="checkbox" name="confirm" className="accent-[#7A1F2B]" />취소할게요</label>
@@ -245,7 +247,7 @@ function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: In
         <p className="mt-3 text-xs text-[#8B6A66]">지난 회차에서 매칭되지 않아 원하신 대로 이 회차로 옮겼어요.</p>
       ) : null}
 
-      {a.payment_status === "PENDING" && (
+      {!canceled && a.payment_status === "PENDING" && (
         <div className="mt-4"><ButtonLink href={`/pay/${a.id}`}>결제하고 매칭 대기하기</ButtonLink></div>
       )}
       {a.match_status === "ALTERNATIVE_OFFERED" && (
@@ -280,7 +282,7 @@ async function openSlots(supabase: Awaited<ReturnType<typeof getMe>>["supabase"]
   return (data ?? []) as SlotRow[];
 }
 
-function Landing({ slots }: { slots: SlotRow[] }) {
+function Landing({ slots, stats }: { slots: SlotRow[]; stats: SlotStat[] }) {
   const dates = [...new Set(slots.map((s) => s.starts_at))];
   const regions = [...new Set(slots.map((s) => REGION_LABEL[s.region_code]))];
   return (
@@ -288,18 +290,9 @@ function Landing({ slots }: { slots: SlotRow[] }) {
       <Invitation nextDate={dates[0] ? fmtDate(dates[0]) : null}
                   regions={regions.length ? regions : ["홍대/합정", "강남/신논현", "을지로/종로", "잠실"]} />
       <Page>
-        <h2 className="mb-3 mt-2 font-serif text-lg font-bold text-[#7A1F2B]">모집 중인 식탁</h2>
-        <div className="space-y-2">
-          {dates.length === 0 && <p className="text-sm text-[#8B6A66]">지금 모집 중인 회차가 없어요.</p>}
-          {dates.map((d) => (
-            <Card key={d} className="py-4">
-              <p className="font-semibold">{fmtDate(d)}</p>
-              <p className="mt-1 text-sm text-[#6A4A4C]">
-                {slots.filter((s) => s.starts_at === d).map((s) => REGION_LABEL[s.region_code]).join(" · ")}
-              </p>
-            </Card>
-          ))}
-        </div>
+        <h2 className="mb-1 mt-2 text-2xl font-black text-[#2E1B1E]">이달의 식탁 일정</h2>
+        <p className="mb-4 text-sm text-[#6A4A4C]">매주 목요일 저녁, 서울 4개 지역에서 열려요. 색 블록이 열린 자리예요.</p>
+        {slots.length === 0 ? <p className="text-sm text-[#8B6A66]">지금 모집 중인 회차가 없어요.</p> : <CalendarBoard slots={slots} stats={stats} />}
 
         <h2 className="mb-3 mt-10 font-serif text-lg font-bold text-[#7A1F2B]">이렇게 진행돼요</h2>
         <ol className="space-y-3 text-sm text-[#6A4A4C]">

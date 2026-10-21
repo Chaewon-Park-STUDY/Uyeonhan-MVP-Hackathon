@@ -3,7 +3,11 @@ import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL } from "@/lib/labels";
 
 // §16 운영 추적: 신청자·테이블 목록 CSV 내보내기 (엑셀에서 바로 열림)
 const csv = (rows: (string | number | null | undefined)[][]) =>
-  "﻿" + rows.map((r) => r.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\r\n");
+  "\uFEFF" + rows.map((r) => r.map((v) => {
+    let s = String(v ?? "");
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;          // 엑셀 수식으로 실행되지 않게
+    return `"${s.replaceAll('"', '""')}"`;
+  }).join(",")).join("\r\n");
 const kst = (iso?: string | null) => (iso ? new Date(new Date(iso).getTime() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ") : "");
 
 export async function GET(req: Request) {

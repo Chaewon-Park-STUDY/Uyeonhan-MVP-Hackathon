@@ -24,7 +24,8 @@ export default async function ResolvePage({ params, searchParams }: {
   const res = app.match_resolutions as unknown as { offered_slots: string[]; reason: string | null } | null;
   const offered = res?.offered_slots ?? [];
   const { data: slots } = offered.length
-    ? await supabase.from("event_slots").select("id, starts_at, region_code").in("id", offered).order("starts_at")
+    ? await supabase.from("event_slots").select("id, starts_at, region_code").in("id", offered)
+        .eq("is_open", true).gt("apply_deadline", new Date().toISOString()).order("starts_at")
     : { data: [] as Slot[] };
   const membership = (app.passes as unknown as { type: string } | null)?.type !== "SINGLE";
 

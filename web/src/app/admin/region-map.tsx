@@ -4,13 +4,8 @@
 type Region = { code: string; label: string; apps: number; tables: number };
 type Demand = { area: string; people: number };
 
-// 지역별 색 (구분이 잘 되게 서로 다른 계열)
-export const REGION_COLOR: Record<string, { main: string; soft: string }> = {
-  HONGDAE: { main: "#D9485F", soft: "#F9DCE1" },
-  EULJIRO: { main: "#2F6FB3", soft: "#DBE8F6" },
-  GANGNAM: { main: "#2E8B57", soft: "#D9EFE2" },
-  JAMSIL: { main: "#C98A12", soft: "#F8EBCB" },
-};
+import { REGION_COLOR } from "@/lib/labels";
+export { REGION_COLOR };
 
 const POS: Record<string, [number, number]> = {           // [경도, 위도]
   HONGDAE: [126.923, 37.556], EULJIRO: [126.991, 37.566], GANGNAM: [127.028, 37.498], JAMSIL: [127.1, 37.513],

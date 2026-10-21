@@ -2,6 +2,8 @@
 
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { errorText } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 import { geminiTopics, templateTopics } from "@/lib/topics";
 
@@ -28,8 +30,9 @@ export async function moreTopics(formData: FormData) {
   const topics = ai ?? templateTopics(interests, (prev ?? []).map((p) => p.content));
   const content = `${ai ? "AI가 고른" : "추천"} 대화 주제예요\n· ${topics.join("\n· ")}`;
 
-  const admin = createAdmin(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) redirect(`/table/${tableId}?error=${encodeURIComponent("지금은 대화 주제를 더 받을 수 없어요. 잠시 후 다시 시도해 주세요.")}`);
+  const admin = createAdmin(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false } });
   await admin.from("chat_messages").insert({ room_id: info.room_id, kind: "TOPIC", content });
   revalidatePath(`/table/${tableId}`);
 }
@@ -38,15 +41,17 @@ export async function moreTopics(formData: FormData) {
 export async function checkIn(formData: FormData) {
   const tableId = String(formData.get("table_id"));
   const supabase = await createClient();
-  await supabase.rpc("check_in", { p_table: tableId });
+  const { error } = await supabase.rpc("check_in", { p_table: tableId });
+  if (error) redirect(`/table/${tableId}?error=${encodeURIComponent(errorText(error.message))}`);
   revalidatePath(`/table/${tableId}`);
 }
 
 export async function cancelSeat(formData: FormData) {
   const tableId = String(formData.get("table_id"));
-  if (formData.get("confirm") !== "on") return;
+  if (formData.get("confirm") !== "on") redirect(`/table/${tableId}?error=${encodeURIComponent("취소하려면 확인란에 체크해 주세요.")}`);
   const supabase = await createClient();
-  await supabase.rpc("cancel_my_seat", { p_table: tableId });
+  const { error } = await supabase.rpc("cancel_my_seat", { p_table: tableId });
+  if (error) redirect(`/table/${tableId}?error=${encodeURIComponent(errorText(error.message))}`);
   revalidatePath(`/table/${tableId}`);
   revalidatePath("/");
 }

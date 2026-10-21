@@ -14,10 +14,11 @@ export default async function PayPage({ params, searchParams }: {
 
   const { data: app } = await supabase
     .from("applications")
-    .select("id, payment_status, passes(type), payments(amount, discount_amount), application_slots(event_slots(starts_at, region_code))")
+    .select("id, application_status, payment_status, passes(type), payments(amount, discount_amount), application_slots(event_slots(starts_at, region_code))")
     .eq("id", id).maybeSingle();
   if (!app) notFound();
   if (app.payment_status === "PAID") redirect(`/?done=${id}`);
+  if (app.application_status !== "SUBMITTED" || app.payment_status !== "PENDING") redirect("/");   // 취소했거나 결제할 게 없음
 
   const pass = PASSES.find((p) => p.value === (app.passes as unknown as { type: string } | null)?.type);
   const payment = (app.payments as unknown as { amount: number; discount_amount: number }[])[0];

@@ -22,7 +22,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
     supabase.rpc("admin_region_demand"),
     supabase.rpc("feedback_summary").maybeSingle<Summary>(),
     supabase.from("settings").select("key, value").in("key", ["matching", "region_expansion"]),
-    callEngine("learn", { dry_run: "1" }) as Promise<Learn>,
+    callEngine("learn", { dry_run: "1" }, 8000) as Promise<Learn>,   // 느리면 8초 뒤 포기하고 화면은 먼저 보여 줌
   ]);
   const cfg = Object.fromEntries((settings ?? []).map((s) => [s.key, s.value])) as Record<string, Record<string, unknown>>;
   const weights = (cfg.matching?.weights ?? {}) as Record<string, number>;
@@ -36,12 +36,13 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const { data: regionStats } = next
     ? await supabase.rpc("admin_region_stats", { p_date: next.run_date })
     : { data: [] };
-  const result = sp.result ? (JSON.parse(sp.result) as { date: string; dry: boolean; out: Record<string, unknown> }) : null;
+  let result: { date: string; dry: boolean; out: Record<string, unknown> } | null = null;
+  try { result = sp.result ? JSON.parse(sp.result) : null; } catch { result = null; }
 
   return (
     <div className="space-y-5">
       {sp.msg && <p className="rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{sp.msg}</p>}
-      {sp.learn && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">학습 결과: {sp.learn}</p>}
+      {sp.learn && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">{({ OK: "피드백을 반영해 매칭 기준을 새로 계산했어요.", SAVED: "피드백을 반영해 매칭 기준을 새로 계산했어요.", NO_DATA: "아직 반영할 피드백이 없어요. 모임이 끝나고 피드백이 쌓이면 다시 눌러 주세요.", UNCHANGED: "새 피드백이 없어 기준은 그대로예요.", DRY_RUN: "미리 계산만 했어요." } as Record<string, string>)[sp.learn] ?? "피드백 반영을 마쳤어요."}</p>}
       {result && (
         <Card className="text-sm">
           <p className="font-semibold">{result.date} 매칭 {result.dry ? "미리보기 (저장하지 않았어요)" : "실행 완료"}</p>
@@ -73,7 +74,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
             {([
               ["자동 확정 테이블", issues.auto_confirmed, "/admin/tables", false],
               ["재배치로 자리 찾음", issues.reallocated, "/admin/runs", false],
-              ["대체 일정·환불 선택 대기", issues.waiting_choice, "/admin/runs", false],
+              ["다른 일정 선택 필요", issues.waiting_choice, "/admin/runs", false],
               ["조건 충돌 (자동 해결 실패)", issues.conflicts, "/admin/exceptions", true],
               ["식당 미배정 테이블", issues.no_venue, "/admin/exceptions", true],
               ["안내 발송 실패", issues.notify_failed, "/admin/messages", true],
@@ -221,7 +222,7 @@ function Kpi({ label, value, sub, href, warn }: { label: string; value: number |
 }
 
 function MatchSummary({ out }: { out: Record<string, unknown> }) {
-  if (out.error) return <p className="mt-2 text-[#A2412A]">실행하지 못했어요: {String(out.error)}</p>;
+  if (out.error) return <p className="mt-2 text-[#A2412A]">매칭 엔진에 연결하지 못했어요. 잠시 후 다시 눌러 주세요. (계속되면 처리대기함과 설정을 확인)</p>;
   if (out.status === "NOTHING_DUE") return <p className="mt-2 text-[#6A4A4C]">지금 실행할 회차가 없어요.</p>;
   if ((out.db as { status?: string } | undefined)?.status === "ALREADY_RUN") return <p className="mt-2 text-[#6A4A4C]">이미 매칭이 끝난 날짜예요.</p>;
   const st = (out.stats ?? {}) as Record<string, number | null>;

@@ -207,8 +207,9 @@ export function notiTextWith(overrides: Record<string, MsgOverride> | null | und
   return { title: o.title ? fill(o.title) : base.title, body: o.body ? fill(o.body) : base.body };
 }
 
-export const notiHref = (template: string, p: { table_id?: string }) =>
+export const notiHref = (template: string, p: { table_id?: string; application_id?: string }) =>
   ["FEEDBACK_REQUEST", "FEEDBACK_REMINDER"].includes(template) ? `/feedback/${p.table_id}`
+    : template === "MATCH_FAILED" && p.application_id ? `/resolve/${p.application_id}`
     : p.table_id ? `/table/${p.table_id}` : template === "NEXT_RECRUIT" ? "/apply" : "/";
 
 export const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
@@ -229,6 +230,7 @@ export const ERROR_TEXT: Record<string, string> = {
   CANCEL_CLOSED: "모임이 시작된 뒤에는 취소할 수 없어요.",
   CANCEL_NOT_ALLOWED: "이미 매칭이 진행됐거나 끝난 신청은 여기서 취소할 수 없어요.",
   CANCEL_AFTER_DEADLINE: "신청 마감(화요일 24:00)이 지나 취소할 수 없어요. 확정 뒤에는 테이블 화면에서 참석 취소를 해 주세요.",
+  CANCELED_APPLICATION: "취소한 신청이라 결제할 수 없어요. 새로 신청해 주세요.",
   FORBIDDEN_FIELD: "바꿀 수 없는 항목이에요.",
   HAS_UPCOMING_TABLE: "확정된 모임이 남아 있어요. 먼저 테이블 화면에서 참석 취소를 해 주세요.",
   HAS_PENDING_APPLICATION: "결제한 신청이 매칭을 기다리고 있어요. 매칭이 끝난 뒤(또는 환불 후)에 탈퇴할 수 있어요.",
@@ -238,3 +240,11 @@ export function errorText(message: string) {
   const code = Object.keys(ERROR_TEXT).find((k) => message.includes(k));
   return code ? ERROR_TEXT[code] : "문제가 생겼어요. 잠시 후 다시 시도해 주세요.";
 }
+
+// 지역별 색 (구분이 잘 되게 서로 다른 계열)
+export const REGION_COLOR: Record<string, { main: string; soft: string }> = {
+  HONGDAE: { main: "#D9485F", soft: "#F9DCE1" },
+  EULJIRO: { main: "#2F6FB3", soft: "#DBE8F6" },
+  GANGNAM: { main: "#2E8B57", soft: "#D9EFE2" },
+  JAMSIL: { main: "#C98A12", soft: "#F8EBCB" },
+};

@@ -1,5 +1,7 @@
+import { GenderTag } from "@/components/admin-ui";
 import { AdminTitle, FilterChips, FilterRow, Pager, Pill, TableWrap, kstDate, shortDt, td, th, todayKst } from "@/components/admin-ui";
 import { requireAdmin } from "@/lib/admin";
+import { REGION_COLOR } from "../region-map";
 import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, animalOf, byRarity } from "@/lib/labels";
 
 type App = {
@@ -64,7 +66,7 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
         </form>
       </AdminTitle>
 
-      <div className="space-y-2 rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
+      <div className="grid gap-x-6 gap-y-2 rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(74,52,38,0.08)] lg:grid-cols-2">
         <FilterRow label="모임일">
           <FilterChips base="/admin/applicants" param="date" current={date} keep={keep}
                        options={[["all", "모든 날짜"], ...dates.map((d) => [d, d.slice(5).replace("-", "/")] as [string, string])]} />
@@ -84,18 +86,20 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
           <FilterChips base="/admin/applicants" param="match" current={sp.match} keep={keep}
                        options={[["", "전체"], ["WAITING", "매칭 대기"], ["CONFIRMED", "확정"], ["ALTERNATIVE_OFFERED", "다른 일정 선택 필요"], ["NO_MATCH", "매칭 종료"]]} />
         </FilterRow>
-        <div className="flex flex-wrap items-center gap-3 border-t border-[#F4ECE6] pt-3">
-          <a href={csvHref} className="rounded-full bg-[#2E8B57] px-3 py-1.5 text-sm font-semibold text-white">⬇ 지금 보이는 {apps.length}명 엑셀(CSV)로 받기</a>
+        <div className="flex flex-wrap items-center gap-3 border-t border-[#F4ECE6] pt-3 lg:col-span-2">
+          <span className="flex flex-wrap gap-2 text-xs">
+            {Object.entries(REGION_LABEL).map(([c, l]) => <span key={c} className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: REGION_COLOR[c]?.main }} />{l}</span>)}
+          </span>
+          <a href={csvHref} className="ml-auto rounded-full bg-[#2E8B57] px-3 py-1.5 text-sm font-semibold text-white">⬇ 지금 보이는 {apps.length}명 엑셀(CSV)로 받기</a>
           <span className="text-xs text-[#8B6A66]">
-            위에서 고른 조건 그대로, 이름·연락처·나이·성별·직업·MBTI·관심사·희망 회차·결제/매칭 상태를 엑셀에서 열 수 있는 파일로 받아요.
-            연락처가 들어 있으니 외부에 공유하지 마세요.
+            고른 조건 그대로 이름·연락처·나이·성별·직업·MBTI·관심사·희망 회차·상태가 담긴 엑셀 파일이에요. 연락처가 있으니 외부 공유 금지.
           </span>
         </div>
       </div>
 
-      <TableWrap min={980}>
+      <TableWrap min={860}>
         <thead>
-          <tr><th className={th}>이름</th><th className={th}>프로필</th><th className={th}>희망 일정</th><th className={th}>결제</th>
+          <tr><th className={th}>이름</th><th className={th}>MBTI · 직업</th><th className={th}>희망 일정 <span className="font-normal">(점 색 = 지역)</span></th><th className={th}>결제</th>
             <th className={th}>매칭</th><th className={th}>이전 이력</th><th className={th}>신청 시각</th></tr>
         </thead>
         <tbody>
@@ -103,30 +107,38 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
             const p = a.profiles;
             const h = hist.get(p.id) ?? { attended: 0, noshow: 0, reported: 0 };
             const restricted = p.restricted_until && p.restricted_until > new Date().toISOString();
+            // 희망 일정: 날짜별로 지역 색 점만 한 줄에 (예: 10/22 ●●●)
+            const byDay = new Map<string, string[]>();
+            for (const x of a.application_slots) {
+              if (!x.event_slots) continue;
+              const d = kstDate(x.event_slots.starts_at).slice(5).replace("-", "/");
+              byDay.set(d, [...(byDay.get(d) ?? []), x.event_slots.region_code]);
+            }
             return (
-              <tr key={a.id}>
-                <td className={td}>
+              <tr key={a.id} className="hover:bg-[#FBF7F0]">
+                <td className={`${td} whitespace-nowrap`} title={p.interests.join(", ")}>
                   <span className="mr-1">{animalOf(byRarity(p.self_traits)[0])?.emoji}</span><b>{p.name}</b>
-                  {restricted && <div className="mt-0.5"><Pill tone="warn">참가 제한 중</Pill></div>}
+                  <GenderTag gender={p.gender} birthYear={p.birth_year} />
+                  {restricted && <span className="ml-1"><Pill tone="warn">제한 중</Pill></span>}
                 </td>
-                <td className={`${td} text-xs text-[#6A4A4C]`}>
-                  {year - p.birth_year}세 · {p.gender === "F" ? "여" : "남"} · {p.mbti ?? "-"}{p.job ? ` · ${p.job}` : ""}
-                  <div className="text-[#8B6A66]">{p.interests.slice(0, 3).join(", ")}</div>
-                </td>
-                <td className={`${td} text-xs`}>
-                  {a.application_slots.filter((s) => s.event_slots).map((s, i) => (
-                    <div key={i}>{kstDate(s.event_slots!.starts_at).slice(5)} {REGION_LABEL[s.event_slots!.region_code]}</div>
+                <td className={`${td} whitespace-nowrap text-xs text-[#6A4A4C]`}>{p.mbti ?? "-"}{p.job ? ` · ${p.job}` : ""}</td>
+                <td className={`${td} whitespace-nowrap text-xs`}>
+                  {[...byDay.entries()].map(([d, regions]) => (
+                    <span key={d} className="mr-2 inline-flex items-center gap-0.5" title={regions.map((c) => REGION_LABEL[c]).join(", ")}>
+                      <span className="mr-0.5 text-[#6A4A4C]">{d}</span>
+                      {regions.map((c) => <span key={c} className="h-2.5 w-2.5 rounded-full" style={{ background: REGION_COLOR[c]?.main }} />)}
+                    </span>
                   ))}
                 </td>
                 <td className={td}><Pill tone={payTone(a.payment_status)}>{PAYMENT_LABEL[a.payment_status] ?? a.payment_status}</Pill></td>
-                <td className={td}><Pill tone={MATCH_LABEL[a.match_status]?.tone === "ok" ? "ok" : MATCH_LABEL[a.match_status]?.tone === "warn" ? "warn" : "muted"}>
-                  {MATCH_LABEL[a.match_status]?.label ?? a.match_status}</Pill></td>
-                <td className={`${td} text-xs`}>
-                  참석 {h.attended}회
-                  {h.noshow > 0 && <span className="ml-1 text-[#A2412A]">· 노쇼/당일취소 {h.noshow}</span>}
+                <td className={td}><Pill tone={a.application_status === "CANCELED" ? "muted" : MATCH_LABEL[a.match_status]?.tone === "ok" ? "ok" : MATCH_LABEL[a.match_status]?.tone === "warn" ? "warn" : "muted"}>
+                  {a.application_status === "CANCELED" ? "신청 취소" : MATCH_LABEL[a.match_status]?.label ?? a.match_status}</Pill></td>
+                <td className={`${td} whitespace-nowrap text-xs`}>
+                  {h.attended ? `참석 ${h.attended}회` : "첫 참여"}
+                  {h.noshow > 0 && <span className="ml-1 text-[#A2412A]">· 노쇼 {h.noshow}</span>}
                   {h.reported > 0 && <span className="ml-1 text-[#A2412A]">· 신고됨 {h.reported}</span>}
                 </td>
-                <td className={`${td} text-xs text-[#8B6A66]`}>{shortDt(a.submitted_at)}</td>
+                <td className={`${td} whitespace-nowrap text-xs text-[#8B6A66]`}>{shortDt(a.submitted_at)}</td>
               </tr>
             );
           })}

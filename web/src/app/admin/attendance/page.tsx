@@ -14,7 +14,7 @@ const ATT: Record<string, [string, "ok" | "warn" | "wait" | "muted" | "info"]> =
 };
 
 // PRD §11 참석 관리: 체크인, 사전 취소, 당일 취소와 노쇼 후보 확인
-export default async function Attendance({ searchParams }: { searchParams: Promise<{ date?: string; region?: string }> }) {
+export default async function Attendance({ searchParams }: { searchParams: Promise<{ date?: string; region?: string; only?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const { data } = await supabase.from("table_members")
@@ -29,7 +29,9 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
   const c = (xs: M[], f: (m: M) => boolean) => xs.filter(f).length;
   const regionOf = (m: M) => m.dining_tables!.event_slots!.region_code;
   const sel = sp.region;
-  const list = sel ? day.filter((m) => regionOf(m) === sel) : [];
+  // 대시보드에서 "노쇼 후보"·"당일 취소"를 누르고 들어오면 지역 상관없이 해당 사람만 바로 보여 줌
+  const onlyF = sp.only === "candidates" ? isCandidate : sp.only === "cancel" ? (m: M) => m.attendance.startsWith("CANCELED") : null;
+  const list = onlyF ? day.filter((m) => onlyF(m) && (!sel || regionOf(m) === sel)) : sel ? day.filter((m) => regionOf(m) === sel) : [];
   // 테이블별로 묶기
   const byTable = new Map<string, M[]>();
   for (const m of list) byTable.set(m.table_id, [...(byTable.get(m.table_id) ?? []), m]);
@@ -75,15 +77,21 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
         })}
       </div>
 
-      {!sel && <p className="text-center text-sm text-[#8B6A66]">지역 칸을 누르면 테이블별 명단이 보여요.</p>}
+      {onlyF && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#FDEFC8] px-4 py-2.5 text-sm text-[#8A5B00]">
+          <b>{sp.only === "candidates" ? "노쇼 후보만" : "취소한 사람만"}</b> 보고 있어요 ({list.length}명)
+          <Link href={`/admin/attendance?date=${date}`} className="ml-auto underline">전체 보기</Link>
+        </div>
+      )}
+      {!sel && !onlyF && <p className="text-center text-sm text-[#8B6A66]">지역 칸을 누르면 테이블별 명단이 보여요.</p>}
 
-      {sel && (
+      {(sel || onlyF) && (
         <div className="grid gap-3 md:grid-cols-2">
           {[...byTable.entries()].map(([tid, ms], i) => (
             <div key={tid} className="rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
               <div className="mb-2 flex items-center justify-between">
-                <Link href={`/admin/tables?table=${tid}`} className="font-bold underline-offset-2 hover:underline" style={{ color: REGION_COLOR[sel]?.main }}>
-                  테이블 {i + 1} · {ms[0].dining_tables!.venues?.name?.replace(/^\[샘플\]\s*/, "") ?? "식당 미배정"}
+                <Link href={`/admin/tables?table=${tid}`} className="font-bold underline-offset-2 hover:underline" style={{ color: REGION_COLOR[regionOf(ms[0])]?.main }}>
+                  {sel ? `테이블 ${i + 1}` : REGION_LABEL[regionOf(ms[0])]} · {ms[0].dining_tables!.venues?.name?.replace(/^\[샘플\]\s*/, "") ?? "식당 미배정"}
                 </Link>
                 <span className="text-sm text-[#8B6A66]">
                   {ms.length}명 · <span className="text-[#C2185B]">여 {ms.filter((m) => m.profiles?.gender === "F").length}</span>{" "}
@@ -117,7 +125,7 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
               </ul>
             </div>
           ))}
-          {byTable.size === 0 && <p className="text-sm text-[#8B6A66]">이 지역에는 이 날짜 테이블이 없어요.</p>}
+          {byTable.size === 0 && <p className="text-sm text-[#8B6A66]">해당하는 사람이 없어요.</p>}
         </div>
       )}
     </div>
