@@ -41,9 +41,10 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">처리대기함 {!all && <span className="text-sm font-normal text-[#8B6A66]">처리 대기 {list.length}건</span>}</h1>
-        <Link href={all ? "/admin/exceptions" : "/admin/exceptions?all=1"} className="text-sm text-[#7A1F2B] underline">
-          {all ? "처리 대기만 보기" : "처리된 것도 보기"}
-        </Link>
+        <div className="flex gap-1.5 text-sm">
+          <Link href="/admin/exceptions" className={`rounded-full px-3 py-1 ${!all ? "bg-[#7A1F2B] text-white" : "border border-[#E9DCD3] bg-white"}`}>처리 대기</Link>
+          <Link href="/admin/exceptions?all=1" className={`rounded-full px-3 py-1 ${all ? "bg-[#7A1F2B] text-white" : "border border-[#E9DCD3] bg-white"}`}>전체 (처리 완료 포함)</Link>
+        </div>
       </div>
       <p className="text-xs text-[#8B6A66]">
         자동으로 처리하지 못한 건만 여기에 모여요. 운영자는 이것만 확인하면 돼요. (예: 알레르기 조건에 맞는 식당 없음, 취소로 4명 미만, 참가자 신고)

@@ -1,3 +1,4 @@
+import { tidyReason } from "@/lib/labels";
 import { notFound, redirect } from "next/navigation";
 import { Card, ErrorBox, Page, Submit } from "@/components/ui";
 import { REGION_LABEL, fmtDate } from "@/lib/labels";
@@ -41,7 +42,7 @@ export default async function ResolvePage({ params, searchParams }: {
   return (
     <Page title="다른 일정을 골라 주세요" back="/">
       <p className="-mt-3 mb-5 text-sm text-[#6A4A4C]">
-        이번 회차에는 조건에 맞는 테이블을 만들지 못했어요{res?.reason ? ` (사유: ${res.reason})` : ""}. 나이 차이·차단 같은 필수 조건은 낮추지 않기 때문이에요.
+        이번 회차에는 조건에 맞는 테이블을 만들지 못했어요{res?.reason ? ` (사유: ${tidyReason(res.reason)})` : ""}. 나이 차이·차단 같은 필수 조건은 낮추지 않기 때문이에요.
         결제는 그대로 유지돼요.
       </p>
       <ErrorBox message={error} />

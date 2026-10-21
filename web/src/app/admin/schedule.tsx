@@ -35,6 +35,34 @@ const when = (d: Date) => {
   return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" });
 };
 
+// 바늘 시계 (한국 시간)
+function AnalogClock({ now }: { now: Date }) {
+  const k = new Date(now.getTime() + 9 * 3600e3);
+  const sec = k.getUTCSeconds(), min = k.getUTCMinutes() + sec / 60, hr = (k.getUTCHours() % 12) + min / 60;
+  const hand = (deg: number, len: number, w: number, color: string) => {
+    const r = ((deg - 90) * Math.PI) / 180;
+    return <line x1="50" y1="50" x2={50 + len * Math.cos(r)} y2={50 + len * Math.sin(r)} stroke={color} strokeWidth={w} strokeLinecap="round" />;
+  };
+  return (
+    <svg viewBox="0 0 100 100" className="h-24 w-24 shrink-0" role="img" aria-label="현재 시각 시계">
+      <circle cx="50" cy="50" r="47" fill="#FFFCF9" stroke="#7A1F2B" strokeWidth="3" />
+      {Array.from({ length: 12 }, (_, i) => {
+        const r = (i * 30 * Math.PI) / 180, long = i % 3 === 0;
+        return <line key={i} x1={50 + (long ? 35 : 38) * Math.sin(r)} y1={50 - (long ? 35 : 38) * Math.cos(r)} x2={50 + 42 * Math.sin(r)} y2={50 - 42 * Math.cos(r)}
+                     stroke={long ? "#7A1F2B" : "#C9B5AE"} strokeWidth={long ? 2.5 : 1.5} strokeLinecap="round" />;
+      })}
+      {[12, 3, 6, 9].map((n, i) => {
+        const r = (i * 90 * Math.PI) / 180;
+        return <text key={n} x={50 + 27 * Math.sin(r)} y={50 - 27 * Math.cos(r) + 3.5} textAnchor="middle" fontSize="10" fontWeight="700" fill="#7A1F2B">{n}</text>;
+      })}
+      {hand(hr * 30, 20, 4, "#2E1B1E")}
+      {hand(min * 6, 30, 2.5, "#2E1B1E")}
+      {hand(sec * 6, 34, 1.2, "#C9A227")}
+      <circle cx="50" cy="50" r="3" fill="#7A1F2B" />
+    </svg>
+  );
+}
+
 export function Schedule({ rows }: { rows: Row[] }) {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -76,11 +104,17 @@ export function Schedule({ rows }: { rows: Row[] }) {
       <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
         {/* 왼쪽: 시계 + 다음 일정 + 다가오는 일정 */}
         <div>
-          <p className="text-xs text-[#8B6A66]">지금 (한국 시간)</p>
-          <p className="font-mono text-3xl font-bold tabular-nums text-[#2E1B1E]">
-            {now.toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
-          </p>
-          <p className="text-xs text-[#6A4A4C]">{now.toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "long" })}</p>
+          {/* 현재 시각: 바늘이 움직이는 시계 + 그 아래 숫자 시각 */}
+          <div className="flex items-center gap-4">
+            <AnalogClock now={now} />
+            <div>
+              <p className="text-xs font-semibold text-[#8B6A66]">현재 시각</p>
+              <p className="font-mono text-2xl font-bold tabular-nums text-[#2E1B1E]">
+                {now.toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
+              </p>
+              <p className="text-xs text-[#6A4A4C]">{now.toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "long" })}</p>
+            </div>
+          </div>
           {next && (
             <Link href={hrefOf(next)} className={`mt-3 block rounded-xl border-l-4 px-3 py-2.5 transition hover:brightness-95 ${KIND[next.kind].chip}`}>
               <p className="text-[11px] opacity-80">다음 일정</p>

@@ -1,3 +1,4 @@
+import { tidyReason } from "@/lib/labels";
 import Link from "next/link";
 import { AdminTitle, Pill, Stat, TableWrap, kstDate, shortDt, td, th } from "@/components/admin-ui";
 import { GenderTag } from "@/components/admin-ui";
@@ -23,7 +24,8 @@ const CAT_STYLE: Record<string, string> = {
   "만족도 기준 미달": "border-[#7A5BB5] bg-[#ECE4F7] text-[#4F3A80]",
   "기타": "border-[#B7A3A0] bg-[#EEE9E4] text-[#6A5F57]",
 };
-const splitReason = (r?: string | null): [string, string] => {
+const splitReason = (r0?: string | null): [string, string] => {
+  const r = tidyReason(r0);
   if (!r) return ["기타", "사유 기록 없음"];
   const i = r.indexOf(":");
   return i > 0 ? [r.slice(0, i).trim(), r.slice(i + 1).trim()] : ["기타", r];

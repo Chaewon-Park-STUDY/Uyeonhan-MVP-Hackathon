@@ -1,3 +1,4 @@
+import { tidyReason } from "@/lib/labels";
 import { redirect } from "next/navigation";
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
 import { DiamondRule, WaxSeal } from "@/components/brand";
@@ -230,7 +231,7 @@ function AppCard({ a, intro, passReused, feedbackDone, seatCanceled }: { a: AppR
           ))}
           {a.match_status === "ALTERNATIVE_OFFERED" && (
             <p className="mt-2 rounded-xl bg-[#FCEDE8] px-3 py-2 text-xs text-[#A2412A]">
-              이 회차에서는 조건에 맞는 테이블을 만들지 못했어요{a.match_resolutions?.reason ? ` (사유: ${a.match_resolutions.reason})` : ""}. 결제는 그대로예요.
+              이 회차에서는 조건에 맞는 테이블을 만들지 못했어요{a.match_resolutions?.reason ? ` (사유: ${tidyReason(a.match_resolutions.reason)})` : ""}. 결제는 그대로예요.
               다른 일정으로 옮기기 · 이용권 보관 · 전액 환불 중에서 골라 주세요.
             </p>
           )}

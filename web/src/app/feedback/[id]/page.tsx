@@ -13,7 +13,7 @@ const SCORES = [
   ["1", "😞", "별로"], ["2", "😕", "아쉬움"], ["3", "🙂", "보통"], ["4", "😊", "좋음"], ["5", "🤩", "최고"],
 ] as const;
 const PEOPLE = [
-  ["LIKE", "또 만나고 싶어요"], ["NEUTRAL", "괜찮았어요"], ["AVOID", "다시는 안 만날래요"], ["ABSENT", "안 왔어요"],
+  ["LIKE", "또 만나고 싶어요"], ["NEUTRAL", "괜찮았어요"], ["AVOID", "다음엔 다른 테이블이 좋아요"], ["ABSENT", "안 왔어요"],
 ] as const;
 
 export default async function FeedbackPage({ params, searchParams }: {
@@ -99,7 +99,7 @@ export default async function FeedbackPage({ params, searchParams }: {
               ))}
             </div>
             <p className="mt-3 text-xs text-[#8B6A66]">
-              &ldquo;또 만나고 싶어요&rdquo;는 다음 매칭에 반영하고, &ldquo;다시는 안 만날래요&rdquo;를 고르면 앞으로 같은 테이블에 배정하지 않아요.
+              &ldquo;또 만나고 싶어요&rdquo;는 다음 매칭에 반영하고, &ldquo;다음엔 다른 테이블이 좋아요&rdquo;를 고르면 앞으로 같은 테이블에 배정하지 않아요.
             </p>
           </Card>
         )}

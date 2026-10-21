@@ -75,19 +75,20 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       </form>
 
       <div className="space-y-4">
-        <Card className="text-xs text-[#6A4A4C]">
-          <p className="mb-2 font-semibold text-[#2E1B1E]">필수 조건 (완화하지 않음)</p>
+        <p className="text-xs font-semibold text-[#8B6A66]">참고 · 바꿀 수 없는 기준</p>
+        <div className="rounded-2xl border border-dashed border-[#D9C2B8] bg-[#F6EDE7] p-4 text-xs text-[#6A4A4C]">
+          <p className="mb-2 font-semibold text-[#7A1F2B]">🔒 필수 조건</p>
           <ul className="list-disc space-y-1 pl-4">
             <li>테이블 4~6명</li><li>나이 차이 {String(m.max_age_gap ?? 8)}살 이하</li>
-            <li>차단·신고·&ldquo;다시는&rdquo; 관계는 같은 테이블 금지</li><li>알레르기 메뉴 식당 배정 금지</li>
+            <li>차단·신고·&ldquo;같은 테이블 원치 않음&rdquo; 관계는 같은 테이블 금지</li><li>알레르기 메뉴 식당 배정 금지</li>
           </ul>
-        </Card>
-        <Card className="text-xs text-[#6A4A4C]">
-          <p className="mb-2 font-semibold text-[#2E1B1E]">현재 요금·환불 정책</p>
+        </div>
+        <div className="rounded-2xl border border-dashed border-[#D9C2B8] bg-[#F6EDE7] p-4 text-xs text-[#6A4A4C]">
+          <p className="mb-2 font-semibold text-[#7A1F2B]">💳 현재 요금·환불 정책</p>
           <p>1회권 {Number((pricing.SINGLE as { price?: number })?.price ?? 9900).toLocaleString()}원 · 멤버십 1/3/6개월</p>
           <p className="mt-1">환불: 모임 주 화요일 24:00까지 100%, 이후 0% · 매칭 실패 시 100% 또는 이동</p>
           <p className="mt-1">노쇼 1점 · 당일 취소 0.5점 · 90일 2점 → 30일 제한</p>
-        </Card>
+        </div>
       </div>
     </div>
     <HistoryCard logs={(logs ?? []) as Log[]} settings={(shist ?? []) as { key: string; actor: string; at: string }[]} people={people} />

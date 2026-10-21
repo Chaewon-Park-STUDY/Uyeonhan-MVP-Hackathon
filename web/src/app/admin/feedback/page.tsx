@@ -133,14 +133,14 @@ export default async function Feedback() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <section>
-          <h2 className="mb-2 font-semibold">사람별 선호 <span className="text-sm font-normal text-[#8B6A66]">다시는 = 다음 매칭에서 같은 테이블 금지</span></h2>
+          <h2 className="mb-2 font-semibold">사람별 선호 <span className="text-sm font-normal text-[#8B6A66]">같은 테이블 원치 않음 = 다음 매칭부터 같은 테이블에 배정하지 않음</span></h2>
           <TableWrap min={420}>
             <thead><tr><th className={th}>누가</th><th className={th}>누구를</th><th className={th}>선택</th></tr></thead>
             <tbody>
               {pref.length === 0 && <tr><td className={td} colSpan={3}>아직 없어요.</td></tr>}
               {pref.map((p, i) => (
                 <tr key={i}><td className={td}>{p.from?.name}<GenderTag gender={p.from?.gender} birthYear={p.from?.birth_year} /></td><td className={td}>{p.to?.name}<GenderTag gender={p.to?.gender} birthYear={p.to?.birth_year} /></td>
-                  <td className={td}>{p.kind === "LIKE" ? <Pill tone="ok">또 만나고 싶어요</Pill> : <Pill tone="warn">다시는</Pill>}</td></tr>
+                  <td className={td}>{p.kind === "LIKE" ? <Pill tone="ok">또 만나고 싶어요</Pill> : <Pill tone="warn">같은 테이블 원치 않음</Pill>}</td></tr>
               ))}
             </tbody>
           </TableWrap>

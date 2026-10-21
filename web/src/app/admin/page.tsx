@@ -151,7 +151,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           </p>
           <p className="mb-3 rounded-lg bg-[#FBF1EC] px-3 py-2 text-sm">
             {(learn.n_tables ?? 0) === 0
-              ? "아직 반영된 피드백이 없어서 처음 설정 그대로예요. 모임이 끝나고 피드백이 쌓이면 자동으로 바뀌어요."
+              ? "아직 반영된 피드백이 없어서 설정 화면의 비중 그대로예요. 모임이 끝나고 피드백이 쌓이면 자동으로 바뀌어요."
               : `피드백 ${learn.n_tables}개 테이블을 반영했어요.`}
           </p>
           {learn.error ? (
@@ -173,7 +173,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                         <span>
                           <b className="text-[#7A1F2B]">{Math.round(r.now * 100)}%</b>
                           {diff !== 0 && <span className={`ml-1.5 text-xs ${diff > 0 ? "text-[#2F6B3A]" : "text-[#A2412A]"}`}>{diff > 0 ? `▲ ${diff}%p` : `▼ ${-diff}%p`}</span>}
-                          <span className="ml-1.5 text-xs text-[#8B6A66]">(처음 {Math.round(r.first * 100)}%)</span>
+                          <span className="ml-1.5 text-xs text-[#8B6A66]">(설정값 {Math.round(r.first * 100)}%)</span>
                         </span>
                       </div>
                       <div className="relative mt-1 h-3 rounded-full bg-[#F4E4DE]">
@@ -183,7 +183,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                     </div>
                   );
                 })}
-                <p className="text-xs text-[#8B6A66]">빨간 막대 = 지금 비중 · 금색 선 = 처음 설정 · 비중은 설정 화면에서 바꿀 수 있어요</p>
+                <p className="text-xs text-[#8B6A66]">빨간 막대 = 피드백 반영 후 지금 비중 · 금색 선 = 설정 화면에서 정한 비중 · 비중은 설정 화면에서 바꿀 수 있어요</p>
               </div>
             );
           })()}
@@ -201,7 +201,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           {sum && (
             <div className="mt-4 border-t border-[#EFE3DC] pt-3 text-xs text-[#6A4A4C]">
               <p className="mb-1 font-semibold text-[#2E1B1E]">피드백 요약</p>
-              대화 {sum.avg_convo ?? "-"} · 식당 {sum.avg_venue ?? "-"} · 또 만나고 싶어요 {sum.like_count} · 다시는 {sum.avoid_count} · 노쇼 {sum.no_shows}
+              대화 {sum.avg_convo ?? "-"} · 식당 {sum.avg_venue ?? "-"} · 또 만나고 싶어요 {sum.like_count} · 같은 테이블 원치 않음 {sum.avoid_count} · 노쇼 {sum.no_shows}
             </div>
           )}
         </Card>

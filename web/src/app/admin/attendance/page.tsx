@@ -24,13 +24,16 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
   const dates = [...new Set(all.map((m) => kstDate(m.dining_tables!.event_slots!.starts_at)))].sort();
   const date = sp.date ?? [...dates].reverse().find((d) => d <= todayKst()) ?? dates[0];
   const now = new Date().toISOString();
+  // 지각: 모임 시작 10분 뒤에 체크인한 사람 (참석으로 처리되지만 명단은 따로 확인)
+  const lateMin = (m: M) => m.checked_in_at ? Math.round((new Date(m.checked_in_at).getTime() - new Date(m.dining_tables!.event_slots!.starts_at).getTime()) / 60e3) : 0;
+  const isLate = (m: M) => lateMin(m) > 10;
   const isCandidate = (m: M) => m.attendance === "SCHEDULED" && !m.checked_in_at && m.dining_tables!.event_slots!.starts_at < now;
   const day = all.filter((m) => kstDate(m.dining_tables!.event_slots!.starts_at) === date);
   const c = (xs: M[], f: (m: M) => boolean) => xs.filter(f).length;
   const regionOf = (m: M) => m.dining_tables!.event_slots!.region_code;
   const sel = sp.region;
   // 대시보드에서 "노쇼 후보"·"당일 취소"를 누르고 들어오면 지역 상관없이 해당 사람만 바로 보여 줌
-  const onlyF = sp.only === "candidates" ? isCandidate : sp.only === "cancel" ? (m: M) => m.attendance.startsWith("CANCELED") : null;
+  const onlyF = sp.only === "candidates" ? isCandidate : sp.only === "cancel" ? (m: M) => m.attendance.startsWith("CANCELED") : sp.only === "late" ? isLate : null;
   const list = onlyF ? day.filter((m) => onlyF(m) && (!sel || regionOf(m) === sel)) : sel ? day.filter((m) => regionOf(m) === sel) : [];
   // 테이블별로 묶기
   const byTable = new Map<string, M[]>();
@@ -38,12 +41,13 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-5 text-base">
-      <AdminTitle title="참석 관리" desc="체크인하면 자동으로 참석 처리돼요. 모임이 시작됐는데 체크인이 없는 사람만 '노쇼 후보'로 보여요. 확인 후 참석 또는 노쇼로 확정하세요(노쇼는 벌점 자동 적용)." />
+      <AdminTitle title="참석 관리" desc="체크인하면 자동으로 참석 처리돼요. 시작 10분 뒤에 체크인한 사람은 지각으로 따로 보여요. 모임이 시작됐는데 체크인이 없는 사람만 '노쇼 후보'로 보여요. 확인 후 참석 또는 노쇼로 확정하세요(노쇼는 벌점 자동 적용)." />
       <FilterChips base="/admin/attendance" param="date" current={date} keep={{ region: sel }} options={dates.map((d) => [d, d] as [string, string])} />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
         <Stat label="배치 인원" value={day.length} />
         <Stat label="체크인·참석" value={c(day, (m) => m.attendance === "ATTENDED")} tone="ok" />
+        <Link href={`/admin/attendance?date=${date}&only=late`}><Stat label="지각 (10분 넘게) · 명단 보기" value={c(day, isLate)} tone={c(day, isLate) ? "warn" : undefined} /></Link>
         <Stat label="사전 취소" value={c(day, (m) => m.attendance === "CANCELED_EARLY")} />
         <Stat label="당일 취소" value={c(day, (m) => m.attendance === "CANCELED_LATE")} tone={c(day, (m) => m.attendance === "CANCELED_LATE") ? "warn" : undefined} />
         <Stat label="노쇼 후보 / 노쇼" value={`${c(day, isCandidate)} / ${c(day, (m) => m.attendance === "NO_SHOW")}`} tone={c(day, isCandidate) ? "warn" : undefined} />
@@ -69,6 +73,7 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
                 <span className="rounded-full px-2.5 py-0.5" style={{ background: col.soft, color: col.main }}>참석 {c(xs, (m) => m.attendance === "ATTENDED")}</span>
                 <span className="rounded-full bg-[#EEE9E4] px-2.5 py-0.5 text-[#6A5F57]">예정 {c(xs, (m) => m.attendance === "SCHEDULED" && !isCandidate(m))}</span>
                 {c(xs, (m) => m.attendance.startsWith("CANCELED")) > 0 && <span className="rounded-full bg-[#DDE9F7] px-2.5 py-0.5 text-[#2C5687]">취소 {c(xs, (m) => m.attendance.startsWith("CANCELED"))}</span>}
+                {c(xs, isLate) > 0 && <span className="rounded-full bg-[#FFF1E0] px-2.5 py-0.5 text-[#B45309]">지각 {c(xs, isLate)}</span>}
                 {c(xs, isCandidate) > 0 && <span className="rounded-full bg-[#FDEFC8] px-2.5 py-0.5 text-[#8A5B00]">노쇼 후보 {c(xs, isCandidate)}</span>}
                 {c(xs, (m) => m.attendance === "NO_SHOW") > 0 && <span className="rounded-full bg-[#FCEDE8] px-2.5 py-0.5 text-[#A2412A]">노쇼 {c(xs, (m) => m.attendance === "NO_SHOW")}</span>}
               </div>
@@ -79,7 +84,7 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
 
       {onlyF && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#FDEFC8] px-4 py-2.5 text-sm text-[#8A5B00]">
-          <b>{sp.only === "candidates" ? "노쇼 후보만" : "취소한 사람만"}</b> 보고 있어요 ({list.length}명)
+          <b>{sp.only === "candidates" ? "노쇼 후보만" : sp.only === "late" ? "지각한 사람만" : "취소한 사람만"}</b> 보고 있어요 ({list.length}명)
           <Link href={`/admin/attendance?date=${date}`} className="ml-auto underline">전체 보기</Link>
         </div>
       )}
@@ -108,6 +113,7 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
                         {m.profiles?.gender === "F" ? "여" : "남"}{m.profiles ? ` · ${new Date().getFullYear() - m.profiles.birth_year}세` : ""}
                       </span>
                       {cand ? <Pill tone="wait">노쇼 후보</Pill> : <Pill tone={ATT[m.attendance]?.[1]}>{ATT[m.attendance]?.[0] ?? m.attendance}</Pill>}
+                      {isLate(m) && <span className="rounded-full bg-[#FFF1E0] px-2 py-0.5 text-xs font-semibold text-[#B45309]">지각 {lateMin(m)}분</span>}
                       <span className="text-sm text-[#8B6A66]">
                         {m.checked_in_at ? `체크인 ${shortDt(m.checked_in_at)}` : m.canceled_at ? `취소 ${shortDt(m.canceled_at)}` : ""}
                       </span>

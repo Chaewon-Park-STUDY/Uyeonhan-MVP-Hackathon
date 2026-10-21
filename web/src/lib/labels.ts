@@ -256,3 +256,6 @@ export const REGION_COLOR: Record<string, { main: string; soft: string }> = {
   GANGNAM: { main: "#2E8B57", soft: "#D9EFE2" },
   JAMSIL: { main: "#C98A12", soft: "#F8EBCB" },
 };
+
+// 매칭 실패 사유 문구 다듬기 (예전에 저장된 '"다시는" 관계' 표현 → '"같은 테이블 원치 않음" 관계')
+export const tidyReason = (r?: string | null) => (r ? r.replaceAll('"다시는" 관계', '"같은 테이블 원치 않음" 관계') : r ?? null);
