@@ -96,8 +96,8 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
                   return (
                     <li key={m.user_id} className="flex flex-wrap items-center gap-2 py-2">
                       <span className="w-16 font-medium">{m.profiles?.name}</span>
-                      <span className={`w-14 rounded-full px-2 py-0.5 text-center text-xs font-semibold ${m.profiles?.gender === "F" ? "bg-[#FCE4EC] text-[#C2185B]" : "bg-[#E3F2FD] text-[#1565C0]"}`}>
-                        {m.profiles?.gender === "F" ? "여" : "남"}{m.profiles ? ` ${new Date().getFullYear() - m.profiles.birth_year}` : ""}
+                      <span className={`w-20 whitespace-nowrap rounded-full px-2 py-0.5 text-center text-xs font-semibold ${m.profiles?.gender === "F" ? "bg-[#FCE4EC] text-[#C2185B]" : "bg-[#E3F2FD] text-[#1565C0]"}`}>
+                        {m.profiles?.gender === "F" ? "여" : "남"}{m.profiles ? ` · ${new Date().getFullYear() - m.profiles.birth_year}세` : ""}
                       </span>
                       {cand ? <Pill tone="wait">노쇼 후보</Pill> : <Pill tone={ATT[m.attendance]?.[1]}>{ATT[m.attendance]?.[0] ?? m.attendance}</Pill>}
                       <span className="text-sm text-[#8B6A66]">
