@@ -7,7 +7,7 @@ import { REGION_LABEL } from "@/lib/labels";
 import { setAttendance } from "../actions";
 
 type M = { table_id: string; user_id: string; attendance: string; checked_in_at: string | null; canceled_at: string | null;
-  profiles: { name: string } | null; dining_tables: { status: string; event_slots: { starts_at: string; region_code: string } | null; venues: { name: string } | null } | null };
+  profiles: { name: string; gender: string; birth_year: number } | null; dining_tables: { status: string; event_slots: { starts_at: string; region_code: string } | null; venues: { name: string } | null } | null };
 
 const ATT: Record<string, [string, "ok" | "warn" | "wait" | "muted" | "info"]> = {
   SCHEDULED: ["참석 예정", "muted"], ATTENDED: ["참석", "ok"], CANCELED_EARLY: ["사전 취소", "info"], CANCELED_LATE: ["당일 취소", "warn"], NO_SHOW: ["노쇼", "warn"],
@@ -18,7 +18,7 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const { data } = await supabase.from("table_members")
-    .select("table_id, user_id, attendance, checked_in_at, canceled_at, profiles(name), dining_tables(status, event_slots(starts_at, region_code), venues(name))")
+    .select("table_id, user_id, attendance, checked_in_at, canceled_at, profiles(name, gender, birth_year), dining_tables(status, event_slots(starts_at, region_code), venues(name))")
     .limit(5000);
   const all = ((data ?? []) as unknown as M[]).filter((m) => m.dining_tables?.status === "CONFIRMED" && m.dining_tables.event_slots);
   const dates = [...new Set(all.map((m) => kstDate(m.dining_tables!.event_slots!.starts_at)))].sort();
@@ -85,14 +85,20 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
                 <Link href={`/admin/tables?table=${tid}`} className="font-bold underline-offset-2 hover:underline" style={{ color: REGION_COLOR[sel]?.main }}>
                   테이블 {i + 1} · {ms[0].dining_tables!.venues?.name?.replace(/^\[샘플\]\s*/, "") ?? "식당 미배정"}
                 </Link>
-                <span className="text-sm text-[#8B6A66]">{ms.length}명</span>
+                <span className="text-sm text-[#8B6A66]">
+                  {ms.length}명 · <span className="text-[#C2185B]">여 {ms.filter((m) => m.profiles?.gender === "F").length}</span>{" "}
+                  <span className="text-[#1565C0]">남 {ms.filter((m) => m.profiles?.gender === "M").length}</span>
+                </span>
               </div>
               <ul className="divide-y divide-[#F4ECE6]">
                 {ms.map((m) => {
                   const cand = isCandidate(m);
                   return (
                     <li key={m.user_id} className="flex flex-wrap items-center gap-2 py-2">
-                      <span className="w-20 font-medium">{m.profiles?.name}</span>
+                      <span className="w-16 font-medium">{m.profiles?.name}</span>
+                      <span className={`w-14 rounded-full px-2 py-0.5 text-center text-xs font-semibold ${m.profiles?.gender === "F" ? "bg-[#FCE4EC] text-[#C2185B]" : "bg-[#E3F2FD] text-[#1565C0]"}`}>
+                        {m.profiles?.gender === "F" ? "여" : "남"}{m.profiles ? ` ${new Date().getFullYear() - m.profiles.birth_year}` : ""}
+                      </span>
                       {cand ? <Pill tone="wait">노쇼 후보</Pill> : <Pill tone={ATT[m.attendance]?.[1]}>{ATT[m.attendance]?.[0] ?? m.attendance}</Pill>}
                       <span className="text-sm text-[#8B6A66]">
                         {m.checked_in_at ? `체크인 ${shortDt(m.checked_in_at)}` : m.canceled_at ? `취소 ${shortDt(m.canceled_at)}` : ""}
