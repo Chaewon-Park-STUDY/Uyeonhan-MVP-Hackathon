@@ -3,7 +3,7 @@ import { PendingButton } from "@/components/pending";
 import { requireAdmin } from "@/lib/admin";
 import { REGION_LABEL, fmtDate, fmtDeadline } from "@/lib/labels";
 import { REGION_COLOR } from "../region-map";
-import { createSlot, createVenue, setVenueCapacity, toggleSlot, toggleVenue } from "../actions";
+import { createSlot, createVenue, setSlotCapacity, setVenueCapacity, toggleSlot, toggleVenue } from "../actions";
 import { ALLERGIES, DISLIKES } from "@/lib/labels";
 
 type Slot = { id: string; starts_at: string; region_code: string; is_open: boolean; apply_deadline: string; capacity: number };
@@ -147,9 +147,35 @@ export default async function Slots({ searchParams }: { searchParams: Promise<{ 
                            defaultValue={Math.max(1, ...v.venue_availability.filter((a) => nextSlotIds.has(a.slot_id)).map((a) => a.tables_total))}
                            className="w-12 rounded border border-[#E9DCD3] px-1 py-0.5 text-xs" />
                     테이블
-                    <PendingButton className="rounded border border-[#E9DCD3] px-1.5 py-0.5 text-xs">저장</PendingButton>
+                    <PendingButton className="rounded border border-[#E9DCD3] px-1.5 py-0.5 text-xs">모두 적용</PendingButton>
                   </form>
                 </div>
+                {/* 날짜·시간별 수용 (PRD §11 식당 재고) */}
+                {(() => {
+                  const open = list.filter((x) => x.is_open && x.region_code === v.region_code && x.starts_at > nowIso);
+                  if (!open.length) return null;
+                  return (
+                    <details className="mt-1.5 text-[11px] text-[#6A4A4C]">
+                      <summary className="cursor-pointer text-[#7A1F2B]">날짜별로 조정</summary>
+                      <div className="mt-1 space-y-1">
+                        {open.map((x) => {
+                          const av = v.venue_availability.find((a) => a.slot_id === x.id);
+                          return (
+                            <form key={x.id} action={setSlotCapacity} className="flex items-center gap-1.5">
+                              <input type="hidden" name="venue" value={v.id} /><input type="hidden" name="slot" value={x.id} />
+                              <span className="w-32">{fmtDate(x.starts_at)}</span>
+                              <span className="text-[#8B6A66]">배정 {av?.tables_used ?? 0} /</span>
+                              <input type="number" name="tables" min={av?.tables_used ?? 0} max={10} defaultValue={av?.tables_total ?? 0}
+                                     className="w-12 rounded border border-[#E9DCD3] px-1 py-0.5 text-xs" />
+                              <span>테이블</span>
+                              <PendingButton className="rounded border border-[#E9DCD3] px-1.5 py-0.5 text-xs">저장</PendingButton>
+                            </form>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  );
+                })()}
               </div>
             );
           })}

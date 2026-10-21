@@ -154,3 +154,30 @@ export async function createVenue(formData: FormData) {
   revalidatePath("/admin/slots");
   redirect("/admin/slots?venue=1");
 }
+
+// 처리대기함: 식당 직접 지정 / 결원 테이블 처리 / 안내 다시 보내기
+export async function assignVenue(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.rpc("admin_assign_venue", { p_table: String(formData.get("table")), p_venue: String(formData.get("venue")) });
+  revalidatePath("/admin/exceptions");
+  revalidatePath("/admin");
+}
+export async function shortTable(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.rpc("admin_short_table", { p_table: String(formData.get("table")), p_mode: String(formData.get("mode")) });
+  revalidatePath("/admin/exceptions");
+  revalidatePath("/admin");
+}
+export async function retryNotify(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.rpc("admin_retry_notify", { p_table: String(formData.get("table")) });
+  revalidatePath("/admin/exceptions");
+}
+// 식당 수용: 회차별
+export async function setSlotCapacity(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.rpc("admin_set_slot_capacity", {
+    p_venue: String(formData.get("venue")), p_slot: String(formData.get("slot")), p_tables: Number(formData.get("tables")) || 0,
+  });
+  revalidatePath("/admin/slots");
+}
