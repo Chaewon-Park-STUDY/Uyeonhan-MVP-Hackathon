@@ -290,8 +290,8 @@ function Landing({ slots, stats }: { slots: SlotRow[]; stats: SlotStat[] }) {
       <Invitation nextDate={dates[0] ? fmtDate(dates[0]) : null}
                   regions={regions.length ? regions : ["홍대/합정", "강남/신논현", "을지로/종로", "잠실"]} />
       <Page>
-        <h2 className="mb-1 mt-2 text-2xl font-black text-[#2E1B1E]">이달의 식탁 일정</h2>
-        <p className="mb-4 text-sm text-[#6A4A4C]">매주 목요일 저녁, 서울 4개 지역에서 열려요. 색 블록이 열린 자리예요.</p>
+        <h2 className="mb-1 mt-2 font-serif text-lg font-bold text-[#7A1F2B]">다가오는 식탁</h2>
+        <p className="mb-3 text-sm text-[#6A4A4C]">매주 목요일 저녁, 서울 4개 지역에서 열려요.</p>
         {slots.length === 0 ? <p className="text-sm text-[#8B6A66]">지금 모집 중인 회차가 없어요.</p> : <CalendarBoard slots={slots} stats={stats} />}
 
         <h2 className="mb-3 mt-10 font-serif text-lg font-bold text-[#7A1F2B]">이렇게 진행돼요</h2>
