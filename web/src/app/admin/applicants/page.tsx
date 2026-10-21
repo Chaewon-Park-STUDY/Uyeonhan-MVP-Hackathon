@@ -48,7 +48,7 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-3">
-      <AdminTitle title="신청자" desc={`조건에 맞는 신청 ${apps.length}건 · 이름을 눌러 검색하거나 아래 칩으로 걸러 보세요.`}>
+      <AdminTitle title="신청자" desc={`신청 ${apps.length}건 · 오른쪽에서 이름으로 찾거나, 아래에서 날짜·결제·매칭 상태를 골라 볼 수 있어요.`}>
         <a href="/admin/export?type=applicants" className="ml-auto rounded-full border border-[#E9DCD3] bg-white px-3 py-1 text-sm">⬇ CSV 내보내기</a>
         <form className="flex gap-1.5">
           {sp.date && <input type="hidden" name="date" value={sp.date} />}
