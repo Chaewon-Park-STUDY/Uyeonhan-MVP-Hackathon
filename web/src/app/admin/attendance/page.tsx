@@ -33,8 +33,11 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
   const regionOf = (m: M) => m.dining_tables!.event_slots!.region_code;
   const sel = sp.region;
   // 대시보드에서 "노쇼 후보"·"당일 취소"를 누르고 들어오면 지역 상관없이 해당 사람만 바로 보여 줌
-  const onlyF = sp.only === "candidates" ? isCandidate : sp.only === "cancel" ? (m: M) => m.attendance.startsWith("CANCELED") : sp.only === "late" ? isLate : null;
-  const list = onlyF ? day.filter((m) => onlyF(m) && (!sel || regionOf(m) === sel)) : sel ? day.filter((m) => regionOf(m) === sel) : [];
+  const onlyF = sp.only === "candidates" ? isCandidate : sp.only === "cancel" ? (m: M) => m.attendance === "CANCELED_LATE" : sp.only === "late" ? isLate : null;
+  // 대시보드에서 날짜 없이 들어오면 최근 7일 전체에서 찾기 (대시보드 숫자와 같게)
+  const weekAgo = new Date(Date.now() - 7 * 86400e3).toISOString();
+  const pool = onlyF && !sp.date ? all.filter((m) => m.dining_tables!.event_slots!.starts_at >= weekAgo) : day;
+  const list = onlyF ? pool.filter((m) => onlyF(m) && (!sel || regionOf(m) === sel)) : sel ? day.filter((m) => regionOf(m) === sel) : [];
   // 테이블별로 묶기
   const byTable = new Map<string, M[]>();
   for (const m of list) byTable.set(m.table_id, [...(byTable.get(m.table_id) ?? []), m]);
@@ -84,7 +87,7 @@ export default async function Attendance({ searchParams }: { searchParams: Promi
 
       {onlyF && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#FDEFC8] px-4 py-2.5 text-sm text-[#8A5B00]">
-          <b>{sp.only === "candidates" ? "노쇼 후보만" : sp.only === "late" ? "지각한 사람만" : "취소한 사람만"}</b> 보고 있어요 ({list.length}명)
+          <b>{sp.only === "candidates" ? "노쇼 후보만" : sp.only === "late" ? "지각한 사람만" : "당일 취소한 사람만"}</b>{!sp.date ? " · 최근 7일" : ""} 보고 있어요 ({list.length}명)
           <Link href={`/admin/attendance?date=${date}`} className="ml-auto underline">전체 보기</Link>
         </div>
       )}

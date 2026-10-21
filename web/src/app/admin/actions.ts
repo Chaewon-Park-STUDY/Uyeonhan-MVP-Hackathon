@@ -61,7 +61,7 @@ export async function saveSettings(formData: FormData) {
   const total = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
   for (const k of Object.keys(weights)) weights[k] = Math.round((weights[k] / total) * 1000) / 1000;   // 합 1로 정규화
 
-  const matching = { ...cur.matching, weights, min_score: (() => { const v = num("min_score", 45); return v > 1 ? v / 100 : v; })(), max_age_gap: num("max_age_gap", 8),
+  const matching = { ...cur.matching, weights, min_score: Math.min(1, Math.max(0, num("min_score", 45) / 100)), max_age_gap: num("max_age_gap", 8),
     policy: formData.get("policy") === "thompson" ? "thompson" : "mean" };
   const demo = { ...cur.demo, feedback_anytime: formData.get("demo") === "on" };
   const nss = cur.no_show_sanction ?? {};
@@ -106,6 +106,7 @@ export async function createSlot(formData: FormData) {
   const dflt = new Date(`${date}T00:00:00+09:00`).getTime() - 24 * 3600e3;
   const deadline = formData.get("deadline") ? new Date(`${formData.get("deadline")}:00+09:00`) : new Date(dflt);
   const regions = formData.getAll("region").map(String);
+  if (!regions.length) redirect(`/admin/slots?err=${encodeURIComponent("지역을 하나 이상 골라 주세요.")}`);
   const errs: string[] = [];
   for (const region of regions) {
     const { error } = await supabase.rpc("admin_create_slot", {

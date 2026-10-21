@@ -37,15 +37,16 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
     supabase.from("table_members").select("user_id, attendance").limit(5000),
     supabase.from("safety_reports").select("reported_id").limit(5000),
   ]);
-  const hist = new Map<string, { attended: number; noshow: number; reported: number }>();
+  const hist = new Map<string, { attended: number; noshow: number; late: number; reported: number }>();
   for (const r of att ?? []) {
-    const h = hist.get(r.user_id) ?? { attended: 0, noshow: 0, reported: 0 };
+    const h = hist.get(r.user_id) ?? { attended: 0, noshow: 0, late: 0, reported: 0 };
     if (r.attendance === "ATTENDED") h.attended++;
-    if (r.attendance === "NO_SHOW" || r.attendance === "CANCELED_LATE") h.noshow++;
+    if (r.attendance === "NO_SHOW") h.noshow++;
+    if (r.attendance === "CANCELED_LATE") h.late++;
     hist.set(r.user_id, h);
   }
   for (const r of reps ?? []) {
-    const h = hist.get(r.reported_id) ?? { attended: 0, noshow: 0, reported: 0 };
+    const h = hist.get(r.reported_id) ?? { attended: 0, noshow: 0, late: 0, reported: 0 };
     h.reported++;
     hist.set(r.reported_id, h);
   }
@@ -105,7 +106,7 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
         <tbody>
           {shown.map((a) => {
             const p = a.profiles;
-            const h = hist.get(p.id) ?? { attended: 0, noshow: 0, reported: 0 };
+            const h = hist.get(p.id) ?? { attended: 0, noshow: 0, late: 0, reported: 0 };
             const restricted = p.restricted_until && p.restricted_until > new Date().toISOString();
             // 희망 일정: 날짜별로 지역 색 점만 한 줄에 (예: 10/22 ●●●)
             const byDay = new Map<string, string[]>();
@@ -136,6 +137,7 @@ export default async function Applicants({ searchParams }: { searchParams: Promi
                 <td className={`${td} whitespace-nowrap text-xs`}>
                   {h.attended ? `참석 ${h.attended}회` : "첫 참여"}
                   {h.noshow > 0 && <span className="ml-1 text-[#A2412A]">· 노쇼 {h.noshow}</span>}
+                  {h.late > 0 && <span className="ml-1 text-[#A2412A]">· 당일 취소 {h.late}</span>}
                   {h.reported > 0 && <span className="ml-1 text-[#A2412A]">· 신고됨 {h.reported}</span>}
                 </td>
                 <td className={`${td} whitespace-nowrap text-xs text-[#8B6A66]`}>{shortDt(a.submitted_at)}</td>

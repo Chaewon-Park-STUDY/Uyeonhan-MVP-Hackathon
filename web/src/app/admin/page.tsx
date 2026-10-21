@@ -42,7 +42,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-5">
       {sp.msg && <p className="rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{sp.msg}</p>}
-      {sp.learn && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">{({ OK: "피드백을 반영해 매칭 기준을 새로 계산했어요.", SAVED: "피드백을 반영해 매칭 기준을 새로 계산했어요.", NO_DATA: "아직 반영할 피드백이 없어요. 모임이 끝나고 피드백이 쌓이면 다시 눌러 주세요.", UNCHANGED: "새 피드백이 없어 기준은 그대로예요.", DRY_RUN: "미리 계산만 했어요." } as Record<string, string>)[sp.learn] ?? "피드백 반영을 마쳤어요."}</p>}
+      {sp.learn && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">{({ OK: "피드백을 반영해 매칭 기준을 새로 계산했어요.", SAVED: "피드백을 반영해 매칭 기준을 새로 계산했어요.", NO_DATA: "아직 반영할 피드백이 없어요. 모임이 끝나고 피드백이 쌓이면 다시 눌러 주세요.", UNCHANGED: "새 피드백이 없어 기준은 그대로예요.", DRY_RUN: "미리 계산만 했어요." } as Record<string, string>)[sp.learn] ?? "피드백을 반영하지 못했어요. 잠시 후 다시 눌러 주세요."}</p>}
       {result && (
         <Card className="text-sm">
           <p className="font-semibold">{result.date} 매칭 {result.dry ? "미리보기 (저장하지 않았어요)" : "실행 완료"}</p>
@@ -122,7 +122,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                         <form action={runMatch} className="flex items-center gap-1">
                           <input type="hidden" name="date" value={d.run_date} />
                           <input type="hidden" name="mode" value="apply" />
-                          <input type="checkbox" name="confirm" title="실행 확인" className="accent-[#7A1F2B]" />
+                          <label className="flex items-center gap-1 text-xs text-[#6A4A4C]"><input type="checkbox" name="confirm" className="accent-[#7A1F2B]" />확인</label>
                           <PendingButton className="rounded-lg bg-[#7A1F2B] px-2.5 py-1 text-xs text-white" pendingText="실행 중…">지금 실행</PendingButton>
                         </form>
                       )}

@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/admin";
 import { REGION_LABEL, fmtDate, fmtDeadline } from "@/lib/labels";
 import { REGION_COLOR } from "../region-map";
 import { createSlot, createVenue, setSlotCapacity, setVenueCapacity, toggleSlot, toggleVenue } from "../actions";
-import { ALLERGIES, DISLIKES } from "@/lib/labels";
+import { ALLERGIES, DISLIKES, venueName } from "@/lib/labels";
 
 type Slot = { id: string; starts_at: string; region_code: string; is_open: boolean; apply_deadline: string; capacity: number };
 type Venue = { id: string; name: string; region_code: string; rating: number | null; menu_tags: string[]; is_active: boolean; is_reservable: boolean;
@@ -43,7 +43,7 @@ export default async function Slots({ searchParams }: { searchParams: Promise<{ 
       {sp.err && <p className="rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{sp.err}</p>}
       <Card>
         <h1 className="mb-1 text-lg font-bold">새 회차 만들기</h1>
-        <p className="mb-3 text-xs text-[#8B6A66]">신청 마감 = 자동 매칭 시각이에요. 비워 두면 모임 이틀 전 밤 12시(목요일 모임이면 화요일 24:00)로 정해져요.</p>
+        <p className="mb-3 text-xs text-[#8B6A66]">신청 마감 = 자동 매칭 시각이에요. 비워 두면 모임 이틀 전 밤 12시(목요일 모임이면 화요일 밤 12시)로 정해져요.</p>
         <form action={createSlot} className="grid gap-3 text-sm md:grid-cols-[1fr_1fr_1fr_1fr]">
           <label className="text-xs text-[#6A4A4C]">모임 날짜<input required type="date" name="date" className="mt-1 w-full rounded-lg border border-[#E9DCD3] px-2 py-1.5 text-sm" /></label>
           <label className="text-xs text-[#6A4A4C]">시작 시간<input type="time" name="time" defaultValue="19:30" className="mt-1 w-full rounded-lg border border-[#E9DCD3] px-2 py-1.5 text-sm" /></label>
@@ -130,7 +130,7 @@ export default async function Slots({ searchParams }: { searchParams: Promise<{ 
             return (
               <div key={v.id} className={`rounded-xl border px-4 py-3 ${v.is_active ? "border-[#E9DCD3] bg-white" : "border-dashed border-[#E9DCD3] opacity-60"}`}>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold">{v.name}</p>
+                  <p className="text-sm font-semibold">{venueName(v.name)}</p>
                   <form action={toggleVenue}>
                     <input type="hidden" name="id" value={v.id} />
                     <input type="hidden" name="active" value={v.is_active ? "0" : "1"} />

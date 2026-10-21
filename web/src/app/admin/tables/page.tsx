@@ -26,7 +26,7 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
 
   let q = supabase.from("dining_tables")
     .select("id, status, score, confirmed_at, score_breakdown, explanation, event_slots(starts_at, region_code), venues(name), chat_rooms(id, chat_messages(count)), table_members(user_id, attendance, reallocation_count, profiles(name, birth_year, gender, mbti, self_traits))");
-  q = sp.table ? q.eq("id", sp.table) : q.in("slot_id", slotIds.length ? slotIds : ["00000000-0000-0000-0000-000000000000"]);
+  q = sp.table ? q.eq("id", sp.table) : q.in("slot_id", slotIds.length ? slotIds : ["00000000-0000-0000-0000-000000000000"]).eq("status", "CONFIRMED");
   const { data } = await q.order("created_at");
   const allTables = (data ?? []) as unknown as T[];
   const tables = sp.table ? allTables : sp.region ? allTables.filter((t) => t.event_slots.region_code === sp.region) : [];
@@ -91,7 +91,7 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
         </div>
       )}
       {!sp.table && !sp.region && allTables.length > 0 && <p className="text-center text-sm text-[#8B6A66]">지역 칸을 누르면 그 지역 테이블이 펼쳐져요.</p>}
-      {allTables.length === 0 && <Card><p className="text-sm text-[#8B6A66]">이 날짜에는 아직 만들어진 테이블이 없어요. 매칭은 화요일 24:00 이후 자동 실행돼요.</p></Card>}
+      {allTables.length === 0 && <Card><p className="text-sm text-[#8B6A66]">이 날짜에는 아직 만들어진 테이블이 없어요. 매칭은 화요일 밤 12시가 지나면 자동으로 실행돼요.</p></Card>}
       {tables.length > 0 && <p className="text-sm text-[#8B6A66]">테이블을 누르면 멤버와 이 테이블을 만든 이유가 펼쳐져요.</p>}
       <div className="space-y-2.5">
         {tables.map((t, i) => {
@@ -156,7 +156,7 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
                     })}
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg bg-[#FBF7F0] px-3 py-2 text-xs text-[#6A4A4C]">
-                    <span>인원 <b>{active.length}명</b> {active.length >= 4 && active.length <= 6 ? "(4~6명 ✓)" : <b className="text-[#A2412A]">(4명 미만 ✗ — 처리대기함 확인)</b>}</span>
+                    <span>인원 <b>{active.length}명</b> {active.length >= 4 && active.length <= 6 ? "(4~6명 ✓)" : <b className="text-[#A2412A]">(4~6명 아님 ✗ — 처리대기함 확인)</b>}</span>
                     <span>연령 {Math.min(...ages)}~{Math.max(...ages)}세 · 차이 <b>{Math.max(...ages) - Math.min(...ages)}살</b> {Math.max(...ages) - Math.min(...ages) <= 8 ? "✓" : "✗"}</span>
                     <span>성비 여 {f} : 남 {active.length - f}</span>
                     <span>MBTI {t.table_members.map((m) => m.profiles.mbti ?? "-").join(" ")}</span>

@@ -17,7 +17,8 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
   let q = supabase.from("exception_cases").select("*").order("created_at", { ascending: false }).limit(100);
   if (!all) q = q.eq("status", "OPEN");
   const { data } = await q;
-  const list = (data ?? []) as Exc[];
+  // 예전 '식당 배정 실패' 기록은 사유 문장에만 테이블 번호가 있음 → 꺼내서 연결
+  const list = ((data ?? []) as Exc[]).map((e) => ({ ...e, table_id: e.table_id ?? /table ([0-9a-f-]{36})/.exec(e.reason)?.[1] ?? null }));
   type Det = { reporter: string; reported: string; reason: string; reporter_gender: string; reporter_birth: number; reported_gender: string; reported_birth: number };
   const details: Record<string, Det> = {};
   await Promise.all(list.filter((e) => e.kind === "SAFETY").map(async (e) => {
@@ -89,7 +90,12 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
             </form>
           )}
           {/* 바로 해결 버튼 */}
-          {e.status === "OPEN" && e.kind === "VENUE" && e.table_id && (
+          {e.status === "OPEN" && e.kind === "VENUE" && e.table_id && venuesIn(tableOf.get(e.table_id)?.event_slots?.region_code).length === 0 && (
+            <p className="mt-3 rounded-xl bg-[#FBF7F0] p-3 text-sm text-[#6A4A4C]">
+              이 지역에 사용 중인 식당이 없어요. <Link href="/admin/slots" className="font-semibold text-[#7A1F2B] underline">회차·식당</Link> 화면에서 식당을 추가하거나 &lsquo;다시 사용&rsquo;을 눌러 주세요.
+            </p>
+          )}
+          {e.status === "OPEN" && e.kind === "VENUE" && e.table_id && venuesIn(tableOf.get(e.table_id)?.event_slots?.region_code).length > 0 && (
             <form action={assignVenue} className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-[#FBF7F0] p-3">
               <input type="hidden" name="table" value={e.table_id} />
               <span className="text-sm font-semibold">식당 직접 지정</span>
