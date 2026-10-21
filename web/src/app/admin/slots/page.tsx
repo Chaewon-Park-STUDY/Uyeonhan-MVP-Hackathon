@@ -1,7 +1,8 @@
-import { Badge, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { PendingButton } from "@/components/pending";
 import { requireAdmin } from "@/lib/admin";
 import { REGION_LABEL, fmtDate, fmtDeadline } from "@/lib/labels";
+import { REGION_COLOR } from "../region-map";
 import { createSlot, createVenue, setVenueCapacity, toggleSlot, toggleVenue } from "../actions";
 import { ALLERGIES, DISLIKES } from "@/lib/labels";
 
@@ -18,6 +19,21 @@ export default async function Slots({ searchParams }: { searchParams: Promise<{ 
     supabase.from("venues").select("id, name, region_code, rating, menu_tags, is_active, is_reservable, venue_availability(slot_id, tables_total, tables_used)").order("region_code").order("rating", { ascending: false }),
   ]);
   const list = (slots ?? []) as Slot[];
+  // 회차별 신청 수 (희망으로 고른 수)
+  const { data: picks } = await supabase.from("application_slots").select("slot_id, applications!inner(application_status)")
+    .eq("applications.application_status", "SUBMITTED").limit(10000);
+  const pickCount = new Map<string, number>();
+  for (const p of picks ?? []) pickCount.set(p.slot_id, (pickCount.get(p.slot_id) ?? 0) + 1);
+  // 모임일별로 묶기 (타임라인)
+  const kd = (iso: string) => new Date(new Date(iso).getTime() + 9 * 3600e3).toISOString().slice(0, 10);
+  const byDate = new Map<string, Slot[]>();
+  for (const x of list) byDate.set(kd(x.starts_at), [...(byDate.get(kd(x.starts_at)) ?? []), x]);
+  const nowIso = new Date().toISOString();
+  const today = kd(nowIso);
+  const dday = (d: string) => {
+    const n = Math.round((new Date(`${d}T00:00:00+09:00`).getTime() - new Date(`${today}T00:00:00+09:00`).getTime()) / 86400e3);
+    return n === 0 ? "오늘" : n > 0 ? `D-${n}` : `${-n}일 전`;
+  };
   const nextSlotIds = new Set(list.filter((s) => s.is_open).map((s) => s.id));
 
   return (
@@ -47,31 +63,55 @@ export default async function Slots({ searchParams }: { searchParams: Promise<{ 
       </Card>
 
       <Card>
-        <h1 className="mb-1 text-lg font-bold">회차</h1>
-        <p className="mb-3 text-xs text-[#8B6A66]">매칭이 실행된 회차는 자동으로 닫혀요. 식당 사정 등으로 특정 회차를 미리 닫을 수도 있어요.</p>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead className="text-left text-xs text-[#8B6A66]"><tr><th className="py-2">일시</th><th>지역</th><th>정원</th><th>신청 마감·자동 매칭</th><th>상태</th><th></th></tr></thead>
-            <tbody>
-              {list.map((s) => (
-                <tr key={s.id} className="border-t border-[#EFE3DC]">
-                  <td className="py-2">{fmtDate(s.starts_at)}</td>
-                  <td>{REGION_LABEL[s.region_code]}</td>
-                  <td>{s.capacity}명</td>
-                  <td className="text-xs">{fmtDeadline(s.apply_deadline)}</td>
-                  <td><Badge tone={s.is_open ? "ok" : "muted"}>{s.is_open ? "모집 중" : "닫힘"}</Badge></td>
-                  <td className="text-right">
-                    <form action={toggleSlot}>
-                      <input type="hidden" name="id" value={s.id} />
-                      <input type="hidden" name="open" value={s.is_open ? "0" : "1"} />
-                      <PendingButton className="rounded-lg border border-[#E9DCD3] px-2.5 py-1 text-xs">{s.is_open ? "닫기" : "열기"}</PendingButton>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <h1 className="mb-1 text-lg font-bold">회차 일정</h1>
+        <p className="mb-4 text-xs text-[#8B6A66]">모임일별로 묶었어요. 매칭이 실행된 회차는 자동으로 닫히고, 식당 사정 등으로 특정 지역만 미리 닫을 수도 있어요.</p>
+        <ol className="relative space-y-5 border-l-2 border-[#EFE3DC] pl-6">
+          {[...byDate.entries()].map(([d, xs]) => {
+            const past = d < today;
+            const deadline = xs[0].apply_deadline;
+            const closedAll = xs.every((x) => !x.is_open);
+            const state = past ? ["모임 끝남", "bg-[#EEE9E4] text-[#6A5F57]"] : deadline < nowIso ? ["매칭 완료 · 모임 준비", "bg-[#D9EFE2] text-[#226B2E]"]
+              : closedAll ? ["모두 닫힘", "bg-[#EEE9E4] text-[#6A5F57]"] : ["모집 중", "bg-[#FDEFC8] text-[#8A5B00]"];
+            return (
+              <li key={d} className={past ? "opacity-60" : ""}>
+                <span className={`absolute -left-[9px] mt-1.5 h-4 w-4 rounded-full border-2 border-white ${past ? "bg-[#C9B8B3]" : deadline < nowIso ? "bg-[#2E8B57]" : "bg-[#C98A12]"}`} />
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="text-lg font-bold">{fmtDate(xs[0].starts_at)}</span>
+                  <span className="rounded-full bg-[#7A1F2B] px-2 py-0.5 text-xs font-semibold text-white">{dday(d)}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${state[1]}`}>{state[0]}</span>
+                  <span className="text-xs text-[#8B6A66]">신청 마감·자동 매칭 {fmtDeadline(deadline)}</span>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  {xs.map((x) => {
+                    const col = REGION_COLOR[x.region_code];
+                    const n = pickCount.get(x.id) ?? 0;
+                    return (
+                      <div key={x.id} className="rounded-xl border-l-4 bg-[#FBF7F0] px-3 py-2.5" style={{ borderColor: x.is_open ? col?.main : "#C9B8B3" }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <b style={{ color: x.is_open ? col?.main : "#8B6A66" }}>{REGION_LABEL[x.region_code]}</b>
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] ${x.is_open ? "bg-[#E3F1E4] text-[#2F6B3A]" : "bg-[#EEE9E4] text-[#8A7F77]"}`}>{x.is_open ? "모집 중" : "닫힘"}</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 rounded-full bg-[#EFE3DC]">
+                          <div className="h-1.5 rounded-full" style={{ width: `${Math.min(100, (n / Math.max(1, x.capacity)) * 100)}%`, background: col?.main }} />
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-xs text-[#6A4A4C]">
+                          <span>신청 {n} / 정원 {x.capacity}</span>
+                          {!past && (
+                            <form action={toggleSlot}>
+                              <input type="hidden" name="id" value={x.id} />
+                              <input type="hidden" name="open" value={x.is_open ? "0" : "1"} />
+                              <PendingButton className="rounded-md border border-[#E9DCD3] bg-white px-2 py-0.5 text-[11px]">{x.is_open ? "닫기" : "열기"}</PendingButton>
+                            </form>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       </Card>
 
       <Card>
@@ -80,8 +120,12 @@ export default async function Slots({ searchParams }: { searchParams: Promise<{ 
           리뷰 평점이 좋고 예약 가능한 곳을 기준으로 확보해요(FAQ Q9). 테이블이 확정되면 알레르기 메뉴가 있는 식당은 빼고, 비선호 음식이 겹치는 만큼 감점한 뒤 평점순으로 자동 배정돼요.
           표시된 이름은 시연용 가상 식당이에요.
         </p>
-        <div className="grid gap-3 md:grid-cols-2">
-          {((venues ?? []) as Venue[]).map((v) => {
+        <div className="grid gap-4 lg:grid-cols-2">
+          {Object.entries(REGION_LABEL).map(([code, label]) => (
+          <section key={code} className="rounded-xl border-t-4 bg-[#FBF7F0] p-3" style={{ borderColor: REGION_COLOR[code]?.main }}>
+          <p className="mb-2 font-bold" style={{ color: REGION_COLOR[code]?.main }}>{label} <span className="text-xs font-normal text-[#8B6A66]">식당 {((venues ?? []) as Venue[]).filter((v) => v.region_code === code).length}곳</span></p>
+          <div className="space-y-2">
+          {((venues ?? []) as Venue[]).filter((v) => v.region_code === code).map((v) => {
             const used = v.venue_availability.filter((a) => nextSlotIds.has(a.slot_id) || a.tables_used > 0);
             return (
               <div key={v.id} className={`rounded-xl border px-4 py-3 ${v.is_active ? "border-[#E9DCD3] bg-white" : "border-dashed border-[#E9DCD3] opacity-60"}`}>
@@ -109,6 +153,9 @@ export default async function Slots({ searchParams }: { searchParams: Promise<{ 
               </div>
             );
           })}
+          </div>
+          </section>
+          ))}
         </div>
         <details className="mt-4 rounded-xl border border-dashed border-[#E9DCD3] px-4 py-3">
           <summary className="cursor-pointer text-sm font-semibold text-[#7A1F2B]">+ 식당 추가</summary>

@@ -45,7 +45,7 @@ export default async function Feedback() {
 
   return (
     <div className="space-y-5">
-      <AdminTitle title="피드백·안전" desc="사람별 선호·신고는 당사자에게 공개되지 않아요. 신고가 들어오면 두 사람은 다음 매칭에서 즉시 분리되고, 조치는 처리대기함에서 해요." />
+      <AdminTitle title="피드백·신고" desc="사람별 선호·신고는 당사자에게 공개되지 않아요. 신고가 들어오면 두 사람은 다음 매칭에서 즉시 분리되고, 조치는 처리대기함에서 해요." />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
         <Stat label="피드백 응답률" value={attended ? `${Math.round((list.length / attended) * 100)}%` : `${list.length}건`} />
         <Stat label="테이블 만족도" value={avg(list.map((f) => f.table_score))} tone="ok" />

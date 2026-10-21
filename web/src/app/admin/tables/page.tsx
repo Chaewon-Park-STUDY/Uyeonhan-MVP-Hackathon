@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { FEATURE_LABEL, requireAdmin } from "@/lib/admin";
+import { REGION_COLOR } from "../region-map";
 import { REGION_LABEL, animalOf, byRarity } from "@/lib/labels";
 
 type T = {
@@ -28,7 +29,7 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
   q = sp.table ? q.eq("id", sp.table) : q.in("slot_id", slotIds.length ? slotIds : ["00000000-0000-0000-0000-000000000000"]);
   const { data } = await q.order("created_at");
   const allTables = (data ?? []) as unknown as T[];
-  const tables = sp.region ? allTables.filter((t) => t.event_slots.region_code === sp.region) : allTables;
+  const tables = sp.table ? allTables : sp.region ? allTables.filter((t) => t.event_slots.region_code === sp.region) : [];
   const year = new Date().getFullYear();
 
   // PRD 7.2 매칭 결과 필수 표시: 참가자별 희망 일정 충족·이전 만남·차단 충돌·희망 동물 충족·재배치 사유
@@ -57,21 +58,40 @@ export default async function Tables({ searchParams }: { searchParams: Promise<{
                 className={`rounded-full px-3 py-1 text-sm ${d === date && !sp.table ? "bg-[#7A1F2B] text-white" : "border border-[#E9DCD3] bg-white"}`}>{d}</Link>
         ))}
       </div>
+      {/* 지역 4칸: 누르면 그 지역 테이블이 아래에 펼쳐짐 */}
       {!sp.table && allTables.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {[["", "모든 지역"], ...Object.entries(REGION_LABEL)].map(([code, label]) => {
-            const n = code ? allTables.filter((t) => t.event_slots.region_code === code).length : allTables.length;
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Object.entries(REGION_LABEL).map(([code, label]) => {
+            const ts = allTables.filter((t) => t.event_slots.region_code === code);
+            const people = ts.reduce((a, t) => a + t.table_members.length, 0);
+            const f = ts.reduce((a, t) => a + t.table_members.filter((m) => m.profiles.gender === "F").length, 0);
+            const avg = ts.length ? ts.reduce((a, t) => a + (t.score ?? 0), 0) / ts.length : 0;
+            const issues = ts.reduce((a, t) => a + t.table_members.filter((m) => ["NO_SHOW", "CANCELED_LATE", "CANCELED_EARLY"].includes(m.attendance)).length, 0);
+            const col = REGION_COLOR[code];
+            const active = sp.region === code;
             return (
-              <Link key={code || "all"} href={`/admin/tables?date=${date}${code ? `&region=${code}` : ""}`}
-                    className={`rounded-full px-3 py-1 text-sm ${(sp.region ?? "") === code ? "bg-[#7A1F2B] text-white" : "border border-[#E9DCD3] bg-white"}`}>
-                {label} {n}
+              <Link key={code} href={`/admin/tables?date=${date}${active ? "" : `&region=${code}`}`}
+                    className="rounded-2xl border-2 bg-white p-4 shadow-[0_1px_3px_rgba(74,52,38,0.08)] transition hover:shadow-md"
+                    style={{ borderColor: active ? col.main : "transparent" }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold" style={{ color: col.main }}>{label}</span>
+                  <span className="text-sm text-[#8B6A66]">{active ? "접기 ▲" : "테이블 보기 ▼"}</span>
+                </div>
+                <p className="mt-1 text-3xl font-bold" style={{ color: col.main }}>{ts.length}<span className="ml-1 text-sm font-normal text-[#6A4A4C]">테이블 · {people}명</span></p>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
+                  <span className="rounded-full px-2 py-0.5" style={{ background: col.soft, color: col.main }}>평균 {avg ? avg.toFixed(1) : "-"}점</span>
+                  <span className="rounded-full bg-[#FCE4EC] px-2 py-0.5 text-[#C2185B]">여 {f}</span>
+                  <span className="rounded-full bg-[#E3F2FD] px-2 py-0.5 text-[#1565C0]">남 {people - f}</span>
+                  {issues > 0 && <span className="rounded-full bg-[#FCEDE8] px-2 py-0.5 text-[#A2412A]">취소·노쇼 {issues}</span>}
+                </div>
               </Link>
             );
           })}
         </div>
       )}
-      {tables.length === 0 && <Card><p className="text-sm text-[#8B6A66]">이 날짜에는 아직 만들어진 테이블이 없어요. 매칭은 화요일 24:00 이후 자동 실행돼요.</p></Card>}
-      <p className="text-sm text-[#8B6A66]">테이블을 누르면 멤버와 이 테이블을 만든 이유가 펼쳐져요.</p>
+      {!sp.table && !sp.region && allTables.length > 0 && <p className="text-center text-sm text-[#8B6A66]">지역 칸을 누르면 그 지역 테이블이 펼쳐져요.</p>}
+      {allTables.length === 0 && <Card><p className="text-sm text-[#8B6A66]">이 날짜에는 아직 만들어진 테이블이 없어요. 매칭은 화요일 24:00 이후 자동 실행돼요.</p></Card>}
+      {tables.length > 0 && <p className="text-sm text-[#8B6A66]">테이블을 누르면 멤버와 이 테이블을 만든 이유가 펼쳐져요.</p>}
       <div className="space-y-2.5">
         {tables.map((t, i) => {
           const ages = t.table_members.map((m) => year - m.profiles.birth_year);

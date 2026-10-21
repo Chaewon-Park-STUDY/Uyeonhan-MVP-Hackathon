@@ -10,7 +10,7 @@ const TABS = [
   ["/admin/tables", "테이블"],
   ["/admin/attendance", "참석"],
   ["/admin/payments", "결제·환불"],
-  ["/admin/feedback", "피드백·안전"],
+  ["/admin/feedback", "피드백·신고"],
   ["/admin/messages", "자동 메시지"],
   ["/admin/slots", "회차·식당"],
   ["/admin/settings", "설정"],
