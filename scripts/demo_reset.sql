@@ -32,6 +32,17 @@ begin
 
   -- demo.matched: 모임 전 상태로 -----------------------------------------------
   if v_mat is not null then
+    -- 확정된 원래 신청 외에 점검하며 새로 만든 신청은 삭제
+    delete from match_resolutions where application_id in (select a.id from applications a where a.user_id = v_mat
+      and not exists (select 1 from table_members m where m.application_id = a.id));
+    delete from payments where application_id in (select a.id from applications a where a.user_id = v_mat
+      and not exists (select 1 from table_members m where m.application_id = a.id));
+    delete from notifications where user_id = v_mat and payload ? 'application_id';
+    delete from exception_cases where application_id in (select a.id from applications a where a.user_id = v_mat
+      and not exists (select 1 from table_members m where m.application_id = a.id));
+    delete from applications a where a.user_id = v_mat
+      and not exists (select 1 from table_members m where m.application_id = a.id);
+    delete from passes ps where ps.user_id = v_mat and not exists (select 1 from applications a where a.pass_id = ps.id);
     update table_members set attendance = 'SCHEDULED', checked_in_at = null, canceled_at = null where user_id = v_mat;
     delete from feedback           where user_id = v_mat;
     delete from person_preferences where from_user = v_mat;
@@ -56,6 +67,7 @@ begin
     -- 원래 신청 외에 테스트하며 새로 만든 신청은 삭제
     delete from match_resolutions where application_id in (select id from applications where user_id = v_alt and id <> v_app);
     delete from payments          where application_id in (select id from applications where user_id = v_alt and id <> v_app);
+    delete from exception_cases   where application_id in (select id from applications where user_id = v_alt and id <> v_app);
     delete from applications      where user_id = v_alt and id <> v_app;
     delete from passes ps where ps.user_id = v_alt
       and not exists (select 1 from applications a where a.pass_id = ps.id);
