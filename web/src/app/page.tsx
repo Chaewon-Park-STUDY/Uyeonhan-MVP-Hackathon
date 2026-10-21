@@ -246,14 +246,21 @@ function AppCard({ a, intro, passReused, feedbackDone, seatCanceled }: { a: AppR
         </p>
       )}
       {!canceled && CANCELABLE.includes(a.match_status) && announce && announce > new Date().toISOString() && (
-        <form action={cancelApplication} className="mt-2 flex items-center justify-end gap-2 text-xs text-[#8B6A66]">
-          <input type="hidden" name="id" value={a.id} />
-          <label className="flex items-center gap-1"><input type="checkbox" name="confirm" className="accent-[#7A1F2B]" />취소할게요</label>
-          <PendingButton className="rounded-lg border border-[#E9DCD3] px-2.5 py-1 text-xs">
-            {a.payment_status === "PAID" && a.passes?.type === "SINGLE" && (payment?.amount ?? 0) > 0 ? "신청 취소 (전액 환불)"
-              : payment?.method === "KEPT_PASS" ? "신청 취소 (이용권 돌려받기)" : "신청 취소"}
-          </PendingButton>
-        </form>
+        <details className="group mt-2 text-xs text-[#8B6A66]">
+          <summary className="ml-auto w-fit cursor-pointer list-none rounded-lg border border-[#E9DCD3] px-2.5 py-1 group-open:hidden">신청 취소</summary>
+          <form action={cancelApplication} className="mt-1 rounded-xl bg-[#FBF1EC] p-3 text-[#6A4A4C]">
+            <input type="hidden" name="id" value={a.id} />
+            <p className="mb-2">
+              {a.payment_status === "PAID" && a.passes?.type === "SINGLE" && (payment?.amount ?? 0) > 0 ? `정말 취소할까요? 결제한 ${(payment?.amount ?? 0).toLocaleString()}원은 전액 환불돼요.`
+                : payment?.method === "KEPT_PASS" ? "정말 취소할까요? 사용한 이용권은 그대로 돌려드려요."
+                : "정말 취소할까요?"}
+            </p>
+            <div className="flex justify-end gap-2">
+              <a href="/" className="rounded-lg border border-[#E9DCD3] bg-white px-3 py-1.5">그대로 둘게요</a>
+              <PendingButton className="rounded-lg bg-[#7A1F2B] px-3 py-1.5 font-semibold text-white">네, 취소할게요</PendingButton>
+            </div>
+          </form>
+        </details>
       )}
       {a.match_status === "CONFIRMED" && !seatCanceled && assigned && assigned.starts_at > new Date().toISOString() && (
         <p className="mt-2 text-center text-xs text-[#8B6A66]">

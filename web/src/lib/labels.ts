@@ -223,6 +223,7 @@ export const ERROR_TEXT: Record<string, string> = {
   PRIVACY_CONSENT_REQUIRED: "개인정보 수집·이용에 동의해야 신청할 수 있어요.",
   NO_SLOT_SELECTED: "참가할 회차를 하나 이상 골라 주세요.",
   SLOT_CLOSED: "신청이 마감된 회차가 있어요. 다른 회차를 골라 주세요.",
+  SAME_DAY_APPLIED: "같은 날짜에 이미 진행 중인 신청이 있어요. 하루에 한 모임만 참여할 수 있어요.",
   ALREADY_APPLIED: "이미 신청한 회차가 포함돼 있어요.",
   INVALID_COUPON: "사용할 수 없는 쿠폰이에요.",
   SLOT_NOT_OFFERED: "제안된 회차 중에서 골라 주세요.",

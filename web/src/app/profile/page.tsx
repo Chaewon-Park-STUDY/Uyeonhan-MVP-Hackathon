@@ -74,12 +74,23 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         <p className="mb-2 text-xs text-[#8B6A66]">내 이용권 · 쿠폰</p>
         {(passes ?? []).length === 0 && (coupons ?? []).length === 0 && <p className="text-sm">아직 없어요.</p>}
         <ul className="space-y-1.5 text-sm">
-          {((passes ?? []) as unknown as PassRow[]).filter((x) => x.type !== "SINGLE" ? x.expires_at && x.expires_at > nowIso : (x.remaining ?? 0) > 0).map((x, i) => (
-            <li key={i} className="flex justify-between">
-              <span>🎟️ {PASSES.find((q) => q.value === x.type)?.label ?? x.type}</span>
-              <span className="text-[#6A4A4C]">{x.type === "SINGLE" ? singleState(x) : `${fmtDate(x.expires_at!).split(" ").slice(0, 3).join(" ")}까지`}</span>
-            </li>
-          ))}
+          {(() => {
+            // 같은 종류·같은 상태는 한 줄로 묶기 (예: 1회권 2장 · 10월 29일 모임에 사용 중)
+            const rows = new Map<string, { label: string; state: string; n: number }>();
+            for (const x of (passes ?? []) as unknown as PassRow[]) {
+              if (x.type !== "SINGLE" ? !(x.expires_at && x.expires_at > nowIso) : !((x.remaining ?? 0) > 0)) continue;
+              const label = PASSES.find((q) => q.value === x.type)?.label ?? x.type;
+              const state = x.type === "SINGLE" ? singleState(x) : `${fmtDate(x.expires_at!).split(" ").slice(0, 3).join(" ")}까지`;
+              const k = label + state;
+              rows.set(k, { label, state, n: (rows.get(k)?.n ?? 0) + 1 });
+            }
+            return [...rows.values()].map((r, i) => (
+              <li key={i} className="flex justify-between">
+                <span>🎟️ {r.label}{r.n > 1 ? ` ${r.n}장` : ""}</span>
+                <span className="text-[#6A4A4C]">{r.state}</span>
+              </li>
+            ));
+          })()}
           {(coupons ?? []).map((c, i) => (
             <li key={`c${i}`} className="flex justify-between">
               <span>🏷️ {COUPON_LABEL[c.kind] ?? "할인"} 쿠폰 {Math.round(c.discount_rate * 100)}%</span>
