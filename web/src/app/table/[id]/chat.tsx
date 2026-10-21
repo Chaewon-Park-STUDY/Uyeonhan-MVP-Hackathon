@@ -178,7 +178,7 @@ export function ChatRoom({ roomId, initial, roster }: { roomId: string; initial:
           </div>
         )}
         {!text && (
-          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5">
+          <div className="mb-2 flex flex-wrap gap-1.5">
             {QUICK.map((q) => (
               <button key={q} type="button" onClick={() => setText(q)}
                       className="shrink-0 rounded-full border border-[#E9DCD3] bg-white px-3 py-1.5 text-xs text-[#6A4A4C] hover:border-[#7A1F2B]">
@@ -212,17 +212,19 @@ function BotBundle({ items, openLast }: { items: Msg[]; openLast: boolean }) {
     <div className="flex items-start gap-2">
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#7A1F2B] text-sm text-white">🍽️</span>
       <div className="min-w-0 flex-1">
-        <p className="mb-1 text-[11px] text-[#8B6A66]">우연한 식탁 운영팀 · 안내 {items.length}개</p>
+        <p className="mb-1 text-[11px] text-[#8B6A66]">우연한 식탁 운영팀 · 안내 {items.length}개 · 제목을 누르면 내용이 보여요</p>
         <div className="overflow-hidden rounded-2xl border border-[#EFE3DC] bg-white">
           {items.map((m, i) => {
             const k = BOT[botKind(m)] ?? BOT.NOTICE;
+            // 같은 종류가 여러 개면 "대화 주제 2"처럼 번호
+            const same = items.filter((x) => botKind(x) === botKind(m));
+            const title = same.length > 1 ? `${k.title} ${same.indexOf(m) + 1}` : k.title;
             const isOpen = open === m.id;
             return (
               <div key={m.id} className={i ? "border-t border-[#F4ECE6]" : ""}>
                 <button type="button" onClick={() => setOpen(isOpen ? null : m.id)}
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm">
-                  <span className="h-full w-1 self-stretch rounded-full" style={{ background: k.color }} />
-                  <span className="font-semibold" style={{ color: k.color }}>{k.title}</span>
+                        className="flex w-full items-center gap-2 border-l-4 px-3 py-2.5 text-left text-sm" style={{ borderColor: k.color }}>
+                  <span className="font-semibold" style={{ color: k.color }}>{title}</span>
                   <span className="ml-auto text-xs text-[#B7A3A0]">{isOpen ? "접기 ▲" : "보기 ▼"}</span>
                 </button>
                 {isOpen && (

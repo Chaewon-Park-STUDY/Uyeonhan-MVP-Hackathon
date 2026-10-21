@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { errorText } from "@/lib/labels";
 
 export async function saveProfile(formData: FormData) {
-  const all = (k: string) => formData.getAll(k).map(String).filter(Boolean);
+  const all = (k: string) => formData.getAll(k).map(String).filter((v) => v && v !== "없어요");   // "없어요" = 빈 목록
   const one = (k: string) => String(formData.get(k) ?? "").trim();
   const extraAllergy = one("allergy_other");
   const extraDislike = one("dislike_other");
@@ -46,5 +46,5 @@ export async function saveProfile(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("upsert_my_profile", { p: payload });
   if (error) redirect(`/onboarding?error=${encodeURIComponent(errorText(error.message))}`);
-  redirect(one("return_to") === "/profile?saved=1" ? "/profile?saved=1" : "/apply");
+  redirect(one("return_to") === "/profile?saved=1" ? "/profile?saved=1" : "/apply?welcome=1");
 }

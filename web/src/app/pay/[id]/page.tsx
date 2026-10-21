@@ -14,10 +14,11 @@ export default async function PayPage({ params, searchParams }: {
 
   const { data: app } = await supabase
     .from("applications")
-    .select("id, payment_status, passes(type), payments(amount, discount_amount), application_slots(event_slots(starts_at, region_code))")
+    .select("id, application_status, payment_status, passes(type), payments(amount, discount_amount), application_slots(event_slots(starts_at, region_code))")
     .eq("id", id).maybeSingle();
   if (!app) notFound();
   if (app.payment_status === "PAID") redirect(`/?done=${id}`);
+  if (app.application_status !== "SUBMITTED" || app.payment_status !== "PENDING") redirect("/");   // 취소했거나 결제할 게 없음
 
   const pass = PASSES.find((p) => p.value === (app.passes as unknown as { type: string } | null)?.type);
   const payment = (app.payments as unknown as { amount: number; discount_amount: number }[])[0];
@@ -63,7 +64,7 @@ export default async function PayPage({ params, searchParams }: {
       <form action={pay} className="mt-5">
         <input type="hidden" name="id" value={id} />
         <Submit>{won(payment?.amount ?? 0)} 결제하기</Submit>
-        <p className="mt-2 text-center text-xs text-[#B7A3A0]">해커톤 시연용 모의 결제예요. 실제로 돈이 나가지 않아요.</p>
+        <p className="mt-2 text-center text-xs text-[#B7A3A0]">지금은 시연 버전이라 실제로 돈이 나가지 않아요.</p>
       </form>
     </Page>
   );

@@ -22,7 +22,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
     supabase.rpc("admin_region_demand"),
     supabase.rpc("feedback_summary").maybeSingle<Summary>(),
     supabase.from("settings").select("key, value").in("key", ["matching", "region_expansion"]),
-    callEngine("learn", { dry_run: "1" }) as Promise<Learn>,
+    callEngine("learn", { dry_run: "1" }, 8000) as Promise<Learn>,   // 느리면 8초 뒤 포기하고 화면은 먼저 보여 줌
   ]);
   const cfg = Object.fromEntries((settings ?? []).map((s) => [s.key, s.value])) as Record<string, Record<string, unknown>>;
   const weights = (cfg.matching?.weights ?? {}) as Record<string, number>;
@@ -30,15 +30,19 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const dates = (rows ?? []) as Row[];
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   const next = dates.find((d) => d.run_date >= today) ?? dates[dates.length - 1];
+  type Issues = { conflicts: number; no_venue: number; notify_failed: number; refund_failed: number; noshow_candidates: number;
+    late_cancels: number; open_reports: number; waiting_choice: number; reallocated: number; auto_confirmed: number; match_failed: number };
+  const { data: issues } = await supabase.rpc("admin_issue_counts").maybeSingle<Issues>();
   const { data: regionStats } = next
     ? await supabase.rpc("admin_region_stats", { p_date: next.run_date })
     : { data: [] };
-  const result = sp.result ? (JSON.parse(sp.result) as { date: string; dry: boolean; out: Record<string, unknown> }) : null;
+  let result: { date: string; dry: boolean; out: Record<string, unknown> } | null = null;
+  try { result = sp.result ? JSON.parse(sp.result) : null; } catch { result = null; }
 
   return (
     <div className="space-y-5">
       {sp.msg && <p className="rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{sp.msg}</p>}
-      {sp.learn && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">학습 결과: {sp.learn}</p>}
+      {sp.learn && <p className="rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">{({ OK: "피드백을 반영해 매칭 기준을 새로 계산했어요.", SAVED: "피드백을 반영해 매칭 기준을 새로 계산했어요.", NO_DATA: "아직 반영할 피드백이 없어요. 모임이 끝나고 피드백이 쌓이면 다시 눌러 주세요.", UNCHANGED: "새 피드백이 없어 기준은 그대로예요.", DRY_RUN: "미리 계산만 했어요." } as Record<string, string>)[sp.learn] ?? "피드백 반영을 마쳤어요."}</p>}
       {result && (
         <Card className="text-sm">
           <p className="font-semibold">{result.date} 매칭 {result.dry ? "미리보기 (저장하지 않았어요)" : "실행 완료"}</p>
@@ -52,11 +56,41 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       {next && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <Kpi label={`${next.run_date} 신청`} value={next.apps_total} sub={`결제 ${next.apps_paid} · 대기 ${next.apps_pending}`} />
-          <Kpi label="확정 테이블" value={next.confirmed_tables} sub={`${next.confirmed_people}명 배치`} />
+          <Kpi label="확정 테이블" value={next.confirmed_tables} sub={`${next.confirmed_people}명 배치${next.apps_paid ? ` · 자동 확정률 ${Math.round((next.confirmed_people / next.apps_paid) * 100)}%` : ""}`} />
           <Kpi label="대체 회차 제안" value={next.offered} sub="미리 고른 선택지 자동 적용" />
-          <Kpi label="처리할 예외" value={openExc ?? 0} sub="예외함에서 확인" href="/admin/exceptions" warn={(openExc ?? 0) > 0} />
+          <Kpi label="처리 대기" value={openExc ?? 0} sub="처리대기함에서 확인" href="/admin/exceptions" warn={(openExc ?? 0) > 0} />
           <Kpi label="피드백 평균 만족도" value={sum?.avg_table ?? "-"} sub={`${sum?.n_feedback ?? 0}건 · 신고 ${sum?.reports ?? 0}`} />
         </div>
+      )}
+
+      {/* PRD §11 대시보드에 바로 보여야 하는 정보 */}
+      {issues && (
+        <section className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(74,52,38,0.08)]">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-semibold">처리 현황</h2>
+            <p className="text-xs text-[#8B6A66]">0이면 자동으로 잘 돌아가고 있다는 뜻이에요 · 누르면 해당 화면으로</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+            {([
+              ["자동 확정 테이블", issues.auto_confirmed, "/admin/tables", false],
+              ["재배치로 자리 찾음", issues.reallocated, "/admin/runs", false],
+              ["다른 일정 선택 필요", issues.waiting_choice, "/admin/runs", false],
+              ["조건 충돌 (자동 해결 실패)", issues.conflicts, "/admin/exceptions", true],
+              ["식당 미배정 테이블", issues.no_venue, "/admin/exceptions", true],
+              ["안내 발송 실패", issues.notify_failed, "/admin/messages", true],
+              ["자동 환불 실패", issues.refund_failed, "/admin/payments?status=REFUND_FAILED", true],
+              ["노쇼 후보", issues.noshow_candidates, "/admin/attendance?only=candidates", true],
+              ["당일 취소 (7일)", issues.late_cancels, "/admin/attendance?only=cancel", true],
+              ["미처리 신고", issues.open_reports, "/admin/exceptions", true],
+            ] as [string, number, string, boolean][]).map(([label, v, href, alert]) => (
+              <Link key={label} href={href}
+                    className={`rounded-xl border px-3 py-2.5 hover:border-[#7A1F2B] ${alert && Number(v) > 0 ? "border-[#E8B4A6] bg-[#FCEDE8]" : "border-[#EFE3DC] bg-[#FBF7F0]"}`}>
+                <p className="text-[11px] text-[#6A4A4C]">{label}</p>
+                <p className={`text-xl font-bold ${alert && Number(v) > 0 ? "text-[#A2412A]" : alert ? "text-[#2F6B3A]" : "text-[#7A1F2B]"}`}>{Number(v)}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* 회차별 현황 + 매칭 실행 */}
@@ -188,7 +222,7 @@ function Kpi({ label, value, sub, href, warn }: { label: string; value: number |
 }
 
 function MatchSummary({ out }: { out: Record<string, unknown> }) {
-  if (out.error) return <p className="mt-2 text-[#A2412A]">실행하지 못했어요: {String(out.error)}</p>;
+  if (out.error) return <p className="mt-2 text-[#A2412A]">매칭 엔진에 연결하지 못했어요. 잠시 후 다시 눌러 주세요. (계속되면 처리대기함과 설정을 확인)</p>;
   if (out.status === "NOTHING_DUE") return <p className="mt-2 text-[#6A4A4C]">지금 실행할 회차가 없어요.</p>;
   if ((out.db as { status?: string } | undefined)?.status === "ALREADY_RUN") return <p className="mt-2 text-[#6A4A4C]">이미 매칭이 끝난 날짜예요.</p>;
   const st = (out.stats ?? {}) as Record<string, number | null>;

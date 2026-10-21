@@ -2,25 +2,31 @@ import { redirect } from "next/navigation";
 import { Card, ErrorBox, Label, Page, Submit } from "@/components/ui";
 import { FAIL_PREFS, PASSES, REFUND_POLICY, REGION_LABEL, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
+import { type BoardSlot, type SlotStat, SlotPicker } from "@/components/schedule-board";
 import { submitApplication } from "./actions";
 
 type Slot = { id: string; starts_at: string; region_code: string; apply_deadline: string };
 
-export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ error?: string; welcome?: string }> }) {
+  const { error, welcome } = await searchParams;
   const { supabase, user, profile } = await getMe();
   if (!user) redirect("/login?next=/apply");
   if (!profile) redirect("/onboarding");
 
   const nowIso = new Date().toISOString();
-  const [{ data: slots }, { data: passes }, { data: coupons }, { data: credit }] = await Promise.all([
+  const [{ data: slots }, { data: passes }, { data: coupons }, { data: credit }, { data: stats }, { data: reviews }] = await Promise.all([
     supabase.from("event_slots").select("id, starts_at, region_code, apply_deadline")
       .eq("is_open", true).gt("apply_deadline", nowIso).order("starts_at").order("region_code"),
     supabase.from("passes").select("type, expires_at").neq("type", "SINGLE").gt("expires_at", nowIso)
       .order("expires_at", { ascending: false }).limit(1),
     supabase.from("coupons").select("id, kind, discount_rate, expires_at").is("used_at", null).gt("expires_at", nowIso),
     supabase.rpc("my_credit"),
+    supabase.rpc("slot_stats"),
+    supabase.rpc("region_reviews"),
   ]);
+  // 회차 인기도 (신청 수·정원만 집계, 개인정보 없음)
+  type Review = { region_code: string; avg_score: number; n: number; comments: { text: string; date: string; score: number }[] };
+  const reviewList = ((reviews ?? []) as Review[]).filter((x) => Number(x.n) > 0);
 
   const byDate = new Map<string, Slot[]>();
   for (const s of (slots ?? []) as Slot[]) {
@@ -31,30 +37,36 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
 
   return (
     <Page title="참가 신청" back="/">
+      {welcome && (
+        <p className="mb-4 rounded-xl bg-[#E3F1E4] px-4 py-3 text-sm text-[#2F6B3A]">
+          자리 카드를 저장했어요. 이제 갈 수 있는 날짜를 골라 주세요. <a href="/profile" className="underline">내 프로필 보기</a>
+        </p>
+      )}
       <ErrorBox message={error} />
       <form action={submitApplication} className="space-y-4">
         <Card>
-          <Label hint="갈 수 있는 날짜·지역을 모두 고르면 매칭될 가능성이 높아져요">참가 가능한 회차</Label>
-          {byDate.size === 0 && <p className="text-sm text-[#8B6A66]">지금 모집 중인 회차가 없어요.</p>}
-          <div className="space-y-4">
-            {[...byDate.entries()].map(([date, list]) => (
-              <div key={date}>
-                <p className="mb-1 text-sm font-semibold">{fmtDate(list[0].starts_at)}</p>
-                <p className="mb-2 text-xs text-[#8B6A66]">신청 마감·매칭 {fmtDeadline(list[0].apply_deadline)}</p>
-                <div className="flex flex-wrap gap-2">
-                  {list.map((s) => (
-                    <label key={s.id} className="cursor-pointer">
-                      <input type="checkbox" name="slot" value={s.id} className="peer sr-only" />
-                      <span className="inline-block rounded-full border border-[#E9DCD3] bg-[#FFFCF9] px-3 py-1.5 text-sm peer-checked:border-[#7A1F2B] peer-checked:bg-[#7A1F2B] peer-checked:text-white">
-                        {REGION_LABEL[s.region_code] ?? s.region_code}
-                      </span>
-                    </label>
+          <Label>참가 가능한 회차</Label>
+          <SlotPicker slots={(slots ?? []) as BoardSlot[]} stats={(stats ?? []) as SlotStat[]} />
+        </Card>
+
+        {reviewList.length > 0 && (
+          <Card>
+            <Label hint="우연한 식탁에서 실제로 식사한 분들이 남긴 평가예요 (이름 없이)">지난 모임 후기</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {reviewList.map((rv) => (
+                <div key={rv.region_code} className="rounded-xl bg-[#FBF7F0] px-3 py-2.5 text-sm">
+                  <p className="flex items-center justify-between">
+                    <b>{REGION_LABEL[rv.region_code]}</b>
+                    <span className="text-[#C9A227]">{"★".repeat(Math.round(Number(rv.avg_score)))}<span className="ml-1 text-xs text-[#6A4A4C]">{rv.avg_score} · {rv.n}명</span></span>
+                  </p>
+                  {rv.comments.map((c, i) => (
+                    <p key={i} className="mt-1 text-xs text-[#6A4A4C]">“{c.text}” <span className="text-[#B7A3A0]">· {c.date} 참가자</span></p>
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+              ))}
+            </div>
+          </Card>
+        )}
 
         <Card>
           <Label>이용권</Label>

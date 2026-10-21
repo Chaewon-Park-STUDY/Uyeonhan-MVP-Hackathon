@@ -1,3 +1,4 @@
+import { GenderTag } from "@/components/admin-ui";
 import Link from "next/link";
 import { Badge, Card, inputCls } from "@/components/ui";
 import { PendingButton } from "@/components/pending";
@@ -16,16 +17,17 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
   if (!all) q = q.eq("status", "OPEN");
   const { data } = await q;
   const list = (data ?? []) as Exc[];
-  const details: Record<string, { reporter: string; reported: string; reason: string }> = {};
+  type Det = { reporter: string; reported: string; reason: string; reporter_gender: string; reporter_birth: number; reported_gender: string; reported_birth: number };
+  const details: Record<string, Det> = {};
   await Promise.all(list.filter((e) => e.kind === "SAFETY").map(async (e) => {
-    const { data: d } = await supabase.rpc("admin_safety_detail", { p_exception: e.id }).maybeSingle<{ reporter: string; reported: string; reason: string }>();
+    const { data: d } = await supabase.rpc("admin_safety_detail", { p_exception: e.id }).maybeSingle<Det>();
     if (d) details[e.id] = d;
   }));
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">예외함 {!all && <span className="text-sm font-normal text-[#8B6A66]">처리 대기 {list.length}건</span>}</h1>
+        <h1 className="text-xl font-bold">처리대기함 {!all && <span className="text-sm font-normal text-[#8B6A66]">처리 대기 {list.length}건</span>}</h1>
         <Link href={all ? "/admin/exceptions" : "/admin/exceptions?all=1"} className="text-sm text-[#7A1F2B] underline">
           {all ? "처리 대기만 보기" : "처리된 것도 보기"}
         </Link>
@@ -33,7 +35,7 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
       <p className="text-xs text-[#8B6A66]">
         자동으로 처리하지 못한 건만 여기에 모여요. 운영자는 이것만 확인하면 돼요. (예: 알레르기 조건에 맞는 식당 없음, 취소로 4명 미만, 참가자 신고)
       </p>
-      {list.length === 0 && <Card><p className="text-sm text-[#8B6A66]">처리할 예외가 없어요. 모든 회차가 자동으로 운영되고 있어요. 🎉</p></Card>}
+      {list.length === 0 && <Card><p className="text-sm text-[#8B6A66]">처리할 건이 없어요. 모든 회차가 자동으로 운영되고 있어요. 🎉</p></Card>}
       {list.map((e) => (
         <Card key={e.id}>
           <div className="flex flex-wrap items-center gap-2">
@@ -42,11 +44,12 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
             <span className="text-xs text-[#8B6A66]">{fmtDate(e.created_at)}</span>
             {e.table_id && <Link href={`/admin/tables?table=${e.table_id}`} className="text-xs text-[#7A1F2B] underline">테이블 보기</Link>}
           </div>
-          <p className="mt-2 text-sm">{e.reason}</p>
+          <p className="mt-2 text-sm">{humanize(e.reason)}</p>
           {e.admin_note && <p className="mt-1 text-xs text-[#2F6B3A]">메모: {e.admin_note}</p>}
           {e.kind === "SAFETY" && details[e.id] && (
             <p className="mt-2 rounded-lg bg-[#FCEDE8] px-3 py-2 text-sm">
-              신고한 사람 <b>{details[e.id].reporter}</b> → 신고된 사람 <b>{details[e.id].reported}</b><br />
+              신고한 사람 <b>{details[e.id].reporter}</b><GenderTag gender={details[e.id].reporter_gender} birthYear={details[e.id].reporter_birth} />
+              {" "}→ 신고된 사람 <b>{details[e.id].reported}</b><GenderTag gender={details[e.id].reported_gender} birthYear={details[e.id].reported_birth} /><br />
               <span className="text-[#6A4A4C]">&ldquo;{details[e.id].reason}&rdquo;</span>
               <span className="mt-1 block text-xs text-[#8B6A66]">두 사람은 이미 자동으로 서로 같은 테이블에 배정되지 않아요. 신고 내용은 상대에게 공개되지 않아요.</span>
             </p>
@@ -75,4 +78,14 @@ export default async function Exceptions({ searchParams }: { searchParams: Promi
       ))}
     </div>
   );
+}
+
+// 예전에 쌓인 사유의 영어 코드·id를 쉬운 말로
+function humanize(r: string) {
+  return r
+    .replace(/ \/ (table|slot) [0-9a-f-]{36}/g, "")
+    .replace(/TABLE_SIZE_INVALID[^/]*/, "인원이 4~6명이 아니었어요")
+    .replace(/AGE_GAP_EXCEEDED[^/]*/, "나이 차이가 8살을 넘었어요")
+    .replace(/EXCLUDED_PAIR_PRESENT[^/]*/, "차단·신고 관계가 있었어요")
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "");
 }

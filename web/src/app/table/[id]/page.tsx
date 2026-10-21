@@ -14,7 +14,8 @@ type Status = { attendance: string; checked_in_at: string | null; can_check_in: 
   can_feedback: boolean; feedback_done: boolean; demo: boolean };
 type Intro = { nickname: string; age_band: string; mbti: string | null; interests: string[]; is_me: boolean; animals?: string[] | null };
 
-export default async function TablePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TablePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
+  const { error: errMsg } = await searchParams;
   const { id } = await params;
   const { supabase, user } = await getMe();
   if (!user) redirect(`/login?next=/table/${id}`);
@@ -38,6 +39,7 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
 
   return (
     <Page back="/">
+      {errMsg && <p className="mb-4 rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{errMsg}</p>}
       <Card>
         <p className="text-xs text-[#8B6A66]">나의 테이블</p>
         <p className="mt-1 text-xl font-bold">{fmtDate(info.starts_at)}</p>

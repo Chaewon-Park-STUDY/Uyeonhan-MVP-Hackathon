@@ -14,7 +14,7 @@ export async function signIn(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) back("signin", "이메일 또는 비밀번호가 맞지 않아요.", next);
-  redirect(next.startsWith("/") ? next : "/");
+  redirect(next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/");
 }
 
 export async function signUp(formData: FormData) {

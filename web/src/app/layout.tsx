@@ -22,21 +22,27 @@ async function Header() {
   return (
     <header className="sticky top-0 z-10 border-b border-[#EFE3DC] bg-[#FBF7F0]/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-1.5 text-[#7A1F2B]">
+        <Link href={profile?.role === "admin" ? "/admin" : "/"} className="flex items-center gap-1.5 text-[#7A1F2B]">
           <BrandSymbol className="h-6 w-9" laurel={false} />
           <Wordmark className="text-lg" />
         </Link>
         {user ? (
           <nav className="flex items-center gap-3 text-sm">
-            {profile?.role === "admin" && <Link href="/admin" className="font-semibold text-[#7A1F2B]">운영</Link>}
-            <Link href="/apply">신청하기</Link>
-            <Link href="/notifications" className="relative">
-              알림
-              {!!unread && (
-                <span className="absolute -right-3 -top-1.5 rounded-full bg-[#7A1F2B] px-1.5 text-[10px] font-bold text-white">{unread}</span>
-              )}
-            </Link>
-            <Link href="/profile">내 프로필</Link>
+            {/* 운영자는 운영 메뉴만, 참가자는 참가자 메뉴만 */}
+            {profile?.role === "admin" ? (
+              <Link href="/admin" className="font-semibold text-[#7A1F2B]">운영 관리</Link>
+            ) : (
+              <>
+                <Link href="/apply">신청하기</Link>
+                <Link href="/notifications" className="relative">
+                  알림
+                  {!!unread && (
+                    <span className="absolute -right-3 -top-1.5 rounded-full bg-[#7A1F2B] px-1.5 text-[10px] font-bold text-white">{unread}</span>
+                  )}
+                </Link>
+                <Link href="/profile">내 프로필</Link>
+              </>
+            )}
             <form action={signOut}>
               <PendingButton className="text-[#8B6A66]" pendingText="나가는 중…">로그아웃</PendingButton>
             </form>

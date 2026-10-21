@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Badge, ButtonLink, Card, Page, Steps } from "@/components/ui";
 import { DiamondRule, WaxSeal } from "@/components/brand";
 import { Invitation } from "@/components/invitation";
@@ -5,16 +6,23 @@ import { TableIllustration } from "@/components/table-illustration";
 import { ProfileSummary } from "@/components/profile-summary";
 import { MATCH_LABEL, PAYMENT_LABEL, REGION_LABEL, mainAnimal, fmtDate, fmtDeadline, won } from "@/lib/labels";
 import { getMe } from "@/lib/supabase/server";
+import { CalendarBoard, type SlotStat } from "@/components/schedule-board";
+import { PendingButton } from "@/components/pending";
+import { cancelApplication } from "./actions";
+
+const WAITING_LIKE = ["WAITING", "TRANSFERRED", "REALLOCATING", "MATCHING"];
+const CANCELABLE = ["WAITING", "TRANSFERRED", "REALLOCATING"];
 
 type SlotRow = { id: string; starts_at: string; region_code: string; apply_deadline: string };
 type AppRow = {
   id: string;
+  application_status: string;
   payment_status: string;
   match_status: string;
   assigned_slot_id: string | null;
   created_at: string;
   application_slots: { event_slots: SlotRow }[];
-  match_resolutions: { choice: string | null; chosen_slot_id: string | null } | null;
+  match_resolutions: { choice: string | null; chosen_slot_id: string | null; reason: string | null } | null;
   payments: { amount: number; status: string; refund_amount: number | null; method: string }[];
   passes: { type: string } | null;
   pass_id: string | null;
@@ -27,13 +35,22 @@ const RESOLVED_TEXT: Record<string, string> = {
   PASS_KEPT: "이용권을 보관했어요. 다음 신청 때 쓸 수 있어요.",
   MEMBERSHIP_EXTENDED: "멤버십 기간을 7일 연장했어요.",
   REFUNDED: "전액 환불을 완료했어요.",
+  CANCELED: "신청을 취소했어요. 결제했다면 전액 환불됐어요.",
 };
 
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
   const { supabase, user, profile } = await getMe();
 
-  if (!user) return <Landing slots={await openSlots(supabase)} />;
+  if (!user) {
+    return (
+      <>
+        {sp.bye && <p className="mx-auto mt-3 max-w-md rounded-xl bg-[#E3F1E4] px-4 py-3 text-center text-sm text-[#2F6B3A]">탈퇴가 완료됐어요. 그동안 함께해 주셔서 고마워요.</p>}
+        <Landing slots={await openSlots(supabase)} stats={((await supabase.rpc("slot_stats")).data ?? []) as SlotStat[]} />
+      </>
+    );
+  }
+  if (profile?.role === "admin") redirect("/admin");      // 운영자는 운영 화면으로
   if (!profile) {
     return (
       <Page>
@@ -58,14 +75,34 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
   const { data } = await supabase
     .from("applications")
-    .select(`id, payment_status, match_status, assigned_slot_id, created_at, pass_id,
+    .select(`id, application_status, payment_status, match_status, assigned_slot_id, created_at, pass_id,
              application_slots(event_slots(id, starts_at, region_code, apply_deadline)),
-             match_resolutions(choice, chosen_slot_id),
+             match_resolutions(choice, chosen_slot_id, reason),
              payments(amount, status, refund_amount, method), passes(type),
              table_members(table_id, dining_tables(explanation, venues(name)))`)
-    .eq("application_status", "SUBMITTED")
+    .in("application_status", ["SUBMITTED", "CANCELED"])
     .order("created_at", { ascending: false });
-  const apps = (data ?? []) as unknown as AppRow[];
+  // 취소한 신청은 최근 2주만 보여 줌
+  const twoWeeks = new Date(Date.now() - 14 * 86400e3).toISOString();
+  const apps = ((data ?? []) as unknown as AppRow[]).filter((a) => a.application_status !== "CANCELED" || a.created_at > twoWeeks);
+
+  // RET-02 다음 일정 추천: 진행 중인 신청이 없으면, 전에 갔던 지역·요일과 맞는 모집 회차를 먼저
+  const active = apps.some((a) => a.application_status === "SUBMITTED" &&
+    (WAITING_LIKE.includes(a.match_status) || a.match_status === "ALTERNATIVE_OFFERED" ||
+      (a.match_status === "CONFIRMED" && a.application_slots.some((x) => x.event_slots.starts_at > new Date().toISOString()))));
+  let recommend: SlotRow | null = null;
+  let recommendBasis = "";
+  if (!active && apps.length > 0) {
+    const confirmedPast = apps.filter((a) => a.match_status === "CONFIRMED").flatMap((a) => a.application_slots.map((x) => x.event_slots));
+    // 참가한 적이 없으면 전에 신청했던 지역·요일을 참고
+    const past = confirmedPast.length ? confirmedPast : apps.flatMap((a) => a.application_slots.map((x) => x.event_slots));
+    recommendBasis = confirmedPast.length ? "전에 오셨던 지역·요일 기준" : "전에 신청했던 지역 기준";
+    const regions = new Set(past.map((x) => x.region_code));
+    const dows = new Set(past.map((x) => new Date(new Date(x.starts_at).getTime() + 9 * 3600e3).getUTCDay()));
+    const open = await openSlots(supabase);
+    const score = (x: SlotRow) => (regions.has(x.region_code) ? 2 : 0) + (dows.has(new Date(new Date(x.starts_at).getTime() + 9 * 3600e3).getUTCDay()) ? 1 : 0);
+    recommend = [...open].sort((x, y) => score(y) - score(x) || x.starts_at.localeCompare(y.starts_at))[0] ?? null;
+  }
 
   const intros: Record<string, Intro[]> = {};
   const fbDone: Record<string, boolean> = {};
@@ -88,7 +125,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
       <div className="mb-4"><ProfileSummary p={profile} editHref="/profile" /></div>
 
-      {sp.done && <Flash>신청이 접수됐어요. 매칭 결과는 발표 시각에 자동으로 알려 드려요.</Flash>}
+      {sp.done && (
+        <Flash>
+          신청이 접수됐어요. 매칭 결과는 발표 시각에 자동으로 알려 드려요.
+          <span className="mt-1 block text-xs opacity-80">환불 규정: 모임 주 화요일 24:00까지 전액 환불, 이후 환불 불가 · 매칭이 안 되면 언제나 전액 환불 또는 일정 이동 · 당일 취소 0.5점, 노쇼 1점(90일 안에 2점이면 30일 제한)</span>
+        </Flash>
+      )}
+      {sp.error && <p className="mb-4 rounded-xl bg-[#FCEDE8] px-4 py-3 text-sm text-[#A2412A]">{sp.error}</p>}
       {sp.resolved && <Flash>{RESOLVED_TEXT[sp.resolved] ?? "처리됐어요."}</Flash>}
 
       {apps.length === 0 ? (
@@ -103,6 +146,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <AppCard key={a.id} a={a} intro={intros[a.id]} feedbackDone={fbDone[a.id]}
                      passReused={apps.some((b) => b.id !== a.id && b.pass_id === a.pass_id && b.created_at > a.created_at)} />
           ))}
+          {recommend && (
+            <Card className="border border-[#C9A227]/50">
+              <p className="text-xs text-[#8B6A66]">다음 추천 회차 · {recommendBasis}</p>
+              <p className="mt-1 font-bold">{fmtDate(recommend.starts_at)} · {REGION_LABEL[recommend.region_code]}</p>
+              <p className="mb-3 mt-0.5 text-xs text-[#8B6A66]">신청 마감 {fmtDeadline(recommend.apply_deadline)}</p>
+              <ButtonLink href="/apply">이 회차 신청하기</ButtonLink>
+            </Card>
+          )}
           <ButtonLink href="/apply" tone="ghost">다른 회차 신청하기</ButtonLink>
         </div>
       )}
@@ -113,9 +164,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: Intro[]; passReused: boolean; feedbackDone?: boolean }) {
   const slots = a.application_slots.map((s) => s.event_slots).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
   const assigned = slots.find((s) => s.id === a.assigned_slot_id);
-  const m = MATCH_LABEL[a.match_status] ?? { label: a.match_status, tone: "muted" as const };
+  const canceled = a.application_status === "CANCELED";
+  const m = canceled ? { label: "신청 취소", tone: "muted" as const } : MATCH_LABEL[a.match_status] ?? { label: a.match_status, tone: "muted" as const };
+  const paidLike = ["PAID", "REFUND_AVAILABLE"].includes(a.payment_status);
   const step: 0 | 1 | 2 | 3 =
-    a.match_status === "CONFIRMED" ? 3 : a.payment_status === "PAID" ? 2 : a.payment_status === "PENDING" ? 1 : 0;
+    a.match_status === "CONFIRMED" ? 3 : paidLike ? 2 : a.payment_status === "PENDING" ? 1 : 0;
   const announce = slots.length ? slots.reduce((min, s) => (s.apply_deadline < min ? s.apply_deadline : min), slots[0].apply_deadline) : null;
   const payment = a.payments[0];
   const shared = a.table_members?.dining_tables?.explanation?.shared_interests ?? [];
@@ -163,19 +216,42 @@ function AppCard({ a, intro, passReused, feedbackDone }: { a: AppRow; intro?: In
           {slots.map((s) => (
             <p key={s.id}>· {fmtDate(s.starts_at)} {REGION_LABEL[s.region_code]}</p>
           ))}
+          {a.match_status === "ALTERNATIVE_OFFERED" && (
+            <p className="mt-2 rounded-xl bg-[#FCEDE8] px-3 py-2 text-xs text-[#A2412A]">
+              이 회차에서는 조건에 맞는 테이블을 만들지 못했어요{a.match_resolutions?.reason ? ` (사유: ${a.match_resolutions.reason})` : ""}. 결제는 그대로예요.
+              다른 일정으로 옮기기 · 이용권 보관 · 전액 환불 중에서 골라 주세요.
+            </p>
+          )}
         </div>
       )}
 
-      {a.match_status === "WAITING" && a.payment_status === "PAID" && announce && (
+      {!canceled && WAITING_LIKE.includes(a.match_status) && a.payment_status === "PAID" && announce && (
         <p className="mt-3 rounded-xl bg-[#F4E4DE] px-3 py-2 text-xs">
-          {fmtDeadline(announce)}에 자동으로 매칭돼요. 조건에 맞는 4~6명을 찾고 있어요.
+          {a.match_status === "REALLOCATING"
+            ? "첫 희망 날짜에서는 조건에 맞는 테이블이 없어, 다음 희망 날짜에서 자리를 찾고 있어요. "
+            : ""}
+          다음 안내: <b>{fmtDeadline(announce)}</b>에 자동 매칭 결과를 알려 드려요.
+        </p>
+      )}
+      {!canceled && CANCELABLE.includes(a.match_status) && announce && announce > new Date().toISOString() && (
+        <form action={cancelApplication} className="mt-2 flex items-center justify-end gap-2 text-xs text-[#8B6A66]">
+          <input type="hidden" name="id" value={a.id} />
+          <label className="flex items-center gap-1"><input type="checkbox" name="confirm" className="accent-[#7A1F2B]" />취소할게요</label>
+          <PendingButton className="rounded-lg border border-[#E9DCD3] px-2.5 py-1 text-xs">
+            {a.payment_status === "PAID" && a.passes?.type === "SINGLE" ? "신청 취소 (전액 환불)" : "신청 취소"}
+          </PendingButton>
+        </form>
+      )}
+      {a.match_status === "CONFIRMED" && assigned && assigned.starts_at > new Date().toISOString() && (
+        <p className="mt-2 text-center text-xs text-[#8B6A66]">
+          다음 안내: {fmtDate(new Date(new Date(assigned.starts_at).getTime() - 86400e3).toISOString())} 전날 리마인드 (시간·장소·예약명)
         </p>
       )}
       {a.match_resolutions?.choice === "MOVE_DATE" || a.match_resolutions?.choice === "MOVE_REGION" ? (
         <p className="mt-3 text-xs text-[#8B6A66]">지난 회차에서 매칭되지 않아 원하신 대로 이 회차로 옮겼어요.</p>
       ) : null}
 
-      {a.payment_status === "PENDING" && (
+      {!canceled && a.payment_status === "PENDING" && (
         <div className="mt-4"><ButtonLink href={`/pay/${a.id}`}>결제하고 매칭 대기하기</ButtonLink></div>
       )}
       {a.match_status === "ALTERNATIVE_OFFERED" && (
@@ -210,7 +286,7 @@ async function openSlots(supabase: Awaited<ReturnType<typeof getMe>>["supabase"]
   return (data ?? []) as SlotRow[];
 }
 
-function Landing({ slots }: { slots: SlotRow[] }) {
+function Landing({ slots, stats }: { slots: SlotRow[]; stats: SlotStat[] }) {
   const dates = [...new Set(slots.map((s) => s.starts_at))];
   const regions = [...new Set(slots.map((s) => REGION_LABEL[s.region_code]))];
   return (
@@ -218,18 +294,9 @@ function Landing({ slots }: { slots: SlotRow[] }) {
       <Invitation nextDate={dates[0] ? fmtDate(dates[0]) : null}
                   regions={regions.length ? regions : ["홍대/합정", "강남/신논현", "을지로/종로", "잠실"]} />
       <Page>
-        <h2 className="mb-3 mt-2 font-serif text-lg font-bold text-[#7A1F2B]">모집 중인 식탁</h2>
-        <div className="space-y-2">
-          {dates.length === 0 && <p className="text-sm text-[#8B6A66]">지금 모집 중인 회차가 없어요.</p>}
-          {dates.map((d) => (
-            <Card key={d} className="py-4">
-              <p className="font-semibold">{fmtDate(d)}</p>
-              <p className="mt-1 text-sm text-[#6A4A4C]">
-                {slots.filter((s) => s.starts_at === d).map((s) => REGION_LABEL[s.region_code]).join(" · ")}
-              </p>
-            </Card>
-          ))}
-        </div>
+        <h2 className="mb-1 mt-2 font-serif text-lg font-bold text-[#7A1F2B]">다가오는 식탁</h2>
+        <p className="mb-3 text-sm text-[#6A4A4C]">매주 목요일 저녁, 서울 4개 지역에서 열려요.</p>
+        {slots.length === 0 ? <p className="text-sm text-[#8B6A66]">지금 모집 중인 회차가 없어요.</p> : <CalendarBoard slots={slots} stats={stats} />}
 
         <h2 className="mb-3 mt-10 font-serif text-lg font-bold text-[#7A1F2B]">이렇게 진행돼요</h2>
         <ol className="space-y-3 text-sm text-[#6A4A4C]">

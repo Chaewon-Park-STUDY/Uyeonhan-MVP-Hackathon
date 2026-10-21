@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 // 운영 일정: 실시간 시계 + 다음 일정 카운트다운 + 2주 달력
@@ -14,6 +15,10 @@ const KIND: Record<Ev["kind"], { dot: string; chip: string; name: string; short:
   meet: { dot: "bg-[#2F7D3A]", chip: "bg-[#DCF0DE] text-[#226B2E] border-[#2F7D3A]", name: "모임", short: "저녁 모임" },
   feedback: { dot: "bg-[#3B6EA8]", chip: "bg-[#DDE9F7] text-[#2C5687] border-[#3B6EA8]", name: "노쇼 판정 · 피드백 마감", short: "노쇼 판정" },
 };
+// 일정을 누르면 바로 그 일을 하는 화면으로
+const hrefOf = (e: Ev) => ({
+  match: `/admin/runs`, remind: `/admin/messages`, meet: `/admin/tables?date=${e.date}`, feedback: `/admin/attendance?date=${e.date}`,
+}[e.kind]);
 const hm = (d: Date) => {
   const k = new Date(d.getTime() + 9 * 3600e3);
   return k.getUTCHours() === 0 && k.getUTCMinutes() === 0 ? "밤 12시"
@@ -77,20 +82,22 @@ export function Schedule({ rows }: { rows: Row[] }) {
           </p>
           <p className="text-xs text-[#6A4A4C]">{now.toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "long" })}</p>
           {next && (
-            <div className={`mt-3 rounded-xl border-l-4 px-3 py-2.5 ${KIND[next.kind].chip}`}>
+            <Link href={hrefOf(next)} className={`mt-3 block rounded-xl border-l-4 px-3 py-2.5 transition hover:brightness-95 ${KIND[next.kind].chip}`}>
               <p className="text-[11px] opacity-80">다음 일정</p>
               <p className="text-sm font-semibold">{next.label}</p>
               <p className="mt-0.5 text-xl font-bold">{dd > 0 ? `${dd}일 ` : ""}{hh}시간 {mm}분 남음</p>
               <p className="text-[11px] opacity-80">{when(next.at)}{next.kind === "match" && " · 자동 실행돼요"}</p>
-            </div>
+            </Link>
           )}
           {upcoming.length > 1 && (
             <div className="mt-3">
               <p className="mb-1.5 text-xs font-semibold text-[#6A4A4C]">다가오는 일정</p>
               <ul className="space-y-1.5">
                 {upcoming.slice(1).map((e, i) => (
-                  <li key={i} className={`rounded-lg border-l-4 px-2.5 py-1.5 text-xs ${KIND[e.kind].chip}`}>
-                    <b>{e.label}</b><br /><span className="opacity-80">{when(e.at)}</span>
+                  <li key={i}>
+                    <Link href={hrefOf(e)} className={`block rounded-lg border-l-4 px-2.5 py-1.5 text-xs transition hover:brightness-95 ${KIND[e.kind].chip}`}>
+                      <b>{e.label}</b><br /><span className="opacity-80">{when(e.at)}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -101,7 +108,7 @@ export function Schedule({ rows }: { rows: Row[] }) {
         {/* 오른쪽: 3주 달력 */}
         <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-lg font-bold">{month}월 운영 일정</p>
+            <p className="text-lg font-bold">{month}월 운영 일정 <span className="text-xs font-normal text-[#8B6A66]">일정을 누르면 해당 화면으로 이동해요</span></p>
             <div className="flex flex-wrap gap-1.5 text-[11px]">
               {Object.values(KIND).map((k) => (
                 <span key={k.name} className={`rounded-full border px-2 py-0.5 ${k.chip}`}>{k.name}</span>
@@ -131,10 +138,10 @@ export function Schedule({ rows }: { rows: Row[] }) {
                   </p>
                   <div className={`space-y-0.5 ${past ? "opacity-45" : ""}`}>
                     {evs.map((e, j) => (
-                      <p key={j} title={`${when(e.at)} · ${e.label}`}
-                         className={`truncate rounded border-l-[3px] px-1 py-0.5 text-[10px] leading-tight ${KIND[e.kind].chip}`}>
+                      <Link key={j} href={hrefOf(e)} title={`${when(e.at)} · ${e.label} (눌러서 이동)`}
+                            className={`block truncate rounded border-l-[3px] px-1 py-0.5 text-[10px] leading-tight transition hover:brightness-95 hover:shadow-sm ${KIND[e.kind].chip}`}>
                         <span className="font-semibold">{hm(e.at)}</span> {KIND[e.kind].short}
-                      </p>
+                      </Link>
                     ))}
                   </div>
                 </div>

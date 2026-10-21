@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Card, Chips, ErrorBox, Label, Page, Submit, inputCls } from "@/components/ui";
 import { ALLERGIES, ANIMALS, BUDGETS, DISLIKES, FAIL_PREFS, INTERESTS, MBTI_AXES, WANT_EXTRA, animalOf } from "@/lib/labels";
 import { AnimalCards } from "@/components/animal-cards";
+import { ExclusiveChips } from "@/components/exclusive-chips";
 import { getMe } from "@/lib/supabase/server";
 import { saveProfile } from "./actions";
 
@@ -19,7 +20,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
       </p>
       <ErrorBox message={error} />
       <form action={saveProfile} className="space-y-4">
-        <input type="hidden" name="return_to" value={profile ? "/profile?saved=1" : "/apply"} />
+        <input type="hidden" name="return_to" value={profile ? "/profile?saved=1" : "/apply?welcome=1"} />
         <Card>
           <Label>기본 정보</Label>
           <div className="space-y-3">
@@ -77,10 +78,10 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
 
         <Card>
           <Label hint="식당을 정할 때 반드시 피해요">알레르기</Label>
-          <Chips name="allergies" options={ALLERGIES} checked={p.allergies ?? []} />
+          <ExclusiveChips name="allergies" options={ALLERGIES} checked={p.allergies?.length ? p.allergies : profile ? ["없어요"] : []} />
           <input name="allergy_other" placeholder="그 밖의 알레르기 (선택)" className={`${inputCls} mt-2`} />
-          <Label hint="가능하면 피해서 식당을 골라요">덜 좋아하는 음식</Label>
-          <Chips name="food_dislikes" options={DISLIKES} checked={p.food_dislikes ?? []} />
+          <Label hint="못 먹는 건 아니지만 가능하면 피하고 싶은 것. 식당을 고를 때 피해요">피하고 싶은 음식</Label>
+          <ExclusiveChips name="food_dislikes" options={DISLIKES} checked={p.food_dislikes?.length ? p.food_dislikes : profile ? ["없어요"] : []} />
           <input name="dislike_other" placeholder="그 밖에 (선택)" className={`${inputCls} mt-2`} />
           <Label>식사 예산</Label>
           <Chips name="budget_ranges" options={BUDGETS} checked={p.budget_ranges ?? []} />
