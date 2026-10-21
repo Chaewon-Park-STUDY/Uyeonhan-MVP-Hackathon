@@ -23,7 +23,11 @@ body {
   background: var(--cream);
   color: var(--ink);
   font-family: var(--font-sans);
+  /* 한국어는 단어(어절) 단위로 줄바꿈 → "높아져 / 요."처럼 글자 하나만 다음 줄로 넘어가지 않게 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
+p, li, h1, h2, h3 { text-wrap: pretty; }
 
 .font-brand {
   font-family: var(--font-brand);

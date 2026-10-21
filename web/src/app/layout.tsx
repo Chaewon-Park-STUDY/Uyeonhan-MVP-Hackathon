@@ -1,3 +1,4 @@
+import { HelpBot } from "@/components/help-bot";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { BrandSymbol, Wordmark } from "@/components/brand";
@@ -58,9 +59,10 @@ async function Header() {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body className="min-h-dvh antialiased">
+      <body className="min-h-dvh pb-20 antialiased">
         <Header />
         {children}
+        <HelpBot />
       </body>
     </html>
   );
