@@ -145,4 +145,4 @@ python -m api._engine.selftest
 - 식당은 시연용 가상 식당(`[샘플]`)
 
 ---
-개발: 박채원 (연세대학교 통계데이터사이언스학과)
+후기: https://purefuture03.tistory.com/38
